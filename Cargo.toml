@@ -1,0 +1,67 @@
+[package]
+name = "tensr"
+version = "0.1.0"
+authors = ["Egor Larionov <egor.larionov@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/elrnv/tensr"
+repository = "https://github.com/elrnv/tensr"
+documentation = "https://docs.rs/tensr"
+keywords = ["tensor", "sparse", "lazy", "block", "linear algebra"]
+
+[dependencies]
+rand = "0.5"
+reinterpret = "0.2"
+sprs = { version = "0.6.4", optional = true }
+image = "0.22"
+unroll = "0.1"
+num-traits = "0.2"
+rayon = "1.2"
+autodiff = { version = "0.1", optional = true }
+packed_simd = { version = "0.3", optional = true }
+approx = { version = "0.3", optional = true }
+
+[dev-dependencies]
+cgmath = "0.17"
+criterion = "0.3"
+
+[features]
+unstable = ["criterion/real_blackbox", "packed_simd"]
+default = ["sprs", "approx"]
+
+[[bench]]
+name = "sum"
+harness = false
+#[[bench]]
+#name = "vectorize"
+#harness = false
+[[bench]]
+name = "norm_squared"
+harness = false
+[[bench]]
+name = "trace"
+harness = false
+[[bench]]
+name = "determinant"
+harness = false
+[[bench]]
+name = "inverse"
+harness = false
+[[bench]]
+name = "transpose"
+harness = false
+[[bench]]
+name = "mtx_vec_mul"
+harness = false
+[[bench]]
+name = "mtx_mtx_mul"
+harness = false
+[[bench]]
+name = "matrix_vector_mul_order"
+harness = false
+[[bench]]
+name = "matrix_add"
+harness = false
+[[bench]]
+name = "angle"
+harness = false
