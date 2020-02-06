@@ -1,13 +1,37 @@
 mod lazy;
+mod array_math;
+mod matrix;
 
 use super::*;
 pub use lazy::*;
+pub use array_math::*;
+pub use matrix::*;
 use num_traits::{Float, One, Zero};
 use std::num::FpCategory;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
 use unroll::unroll_for_loops;
+
+/// A marker trait indicating non-tensor types. These are all supported collecitons.
+pub trait NonTensor {}
+impl<S, I> NonTensor for Select<S, I> {}
+impl<S, I> NonTensor for Subset<S, I> {}
+impl<S, N> NonTensor for UniChunked<S, N> {}
+impl<S, O> NonTensor for Chunked<S, O> {}
+impl<S, T, I> NonTensor for Sparse<S, T, I> {}
+impl<T> NonTensor for std::ops::Range<T> {}
+impl<T> NonTensor for Vec<T> {}
+impl<T> NonTensor for [T] {}
+impl<'a, T> NonTensor for &'a [T] {}
+impl<'a, T> NonTensor for &'a mut [T] {}
+
+impl<S: NonTensor, I> From<S> for Subset<S, I> {
+    fn from(set: S) -> Subset<S, I> {
+        Subset::all(set)
+    }
+}
+
 
 /// A generic type that accepts algebraic expressions.
 ///

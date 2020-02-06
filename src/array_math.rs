@@ -14,6 +14,7 @@ use unroll::unroll_for_loops;
 /// This approach complicates the code a bit but makes it shorter.
 macro_rules! impl_array_vectors {
     ($vecn:ident, $rowvecn:ident; $n:expr) => {
+        impl<T> NonTensor for [T; $n] {}
         pub type $vecn<S> = Tensor<[Tensor<S>; $n]>;
         pub type $rowvecn<S> = Tensor<[Tensor<[Tensor<S>; $n]>; 1]>;
 
@@ -727,6 +728,38 @@ macro_rules! impl_array_vectors {
                 unsafe { std::mem::transmute_copy::<_, Tensor<[Tensor<T>; LEN]>>(&v) }
             }
         }
+
+        impl<T, I> std::ops::Mul<Tensor<[T; $n]>> for UniChunkedIterExpr<I, $nty>
+        where Self: ExprSize,
+        {
+            type Output = CwiseUnExpr<CwiseBinExpr<UniChunkedIterExpr<I, $nty>, Repeat<Tensor<[T; $n]>>, CwiseMultiplication>, Summation>;
+            #[inline]
+            fn mul(self, rhs: Tensor<[T; $n]>) -> Self::Output {
+                CwiseUnExpr::new(CwiseBinExpr::new(self, Repeat::new(rhs)))
+            }
+        }
+
+        impl<T: Scalar, S, D> EvalExtend<Tensor<[T; $n]>> for UniChunked<S, $nty>
+            where Self: Push<D>,
+                  Tensor<[T; $n]>: IntoData<Data = D>,
+        {
+            #[inline]
+            fn eval_extend(&mut self, tensor: Tensor<[T; $n]>) {
+                self.push(tensor.into_data());
+            }
+        }
+        //impl<T: Scalar> CwiseMulOp<UniChunkedIterExpr<I, N> for Tensor<[T; $n]> {
+        //    type Output = Tensor<[T; $n]>;
+        //    #[inline]
+        //    #[unroll_for_loops]
+        //    fn cwise_mul(mut self, rhs: Self) -> Self::Output {
+        //        for i in 0..$n {
+        //            self[i] *= rhs[i];
+        //        }
+        //        self
+        //    }
+        //}
+
 
         #[cfg(feature = "approx")]
         impl<U, T: approx::AbsDiffEq<U>> approx::AbsDiffEq<Tensor<[U; $n]>> for Tensor<[T; $n]>
