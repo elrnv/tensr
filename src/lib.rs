@@ -2,11 +2,12 @@ mod lazy;
 mod array_math;
 mod matrix;
 
-use super::*;
+use flatk::*;
 pub use lazy::*;
 pub use array_math::*;
 pub use matrix::*;
 use num_traits::{Float, One, Zero};
+use typenum::Unsigned;
 use std::num::FpCategory;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
@@ -662,7 +663,7 @@ impl<S: ?Sized> Tensor<S> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let mut v = vec![1.0, -2.0, 3.0];
     /// v.as_mut_tensor().negate();
     /// assert_eq!(v, vec![-1.0, 2.0, -3.0]);
@@ -1440,15 +1441,6 @@ macro_rules! impl_scalar {
                 }
             }
 
-            impl AsSlice<$type> for $type {
-                #[inline]
-                fn as_slice(&self) -> &[$type] {
-                    unsafe {
-                        std::slice::from_raw_parts(self as *const _, 1)
-                    }
-                }
-            }
-
             impl CwiseMulOp for $type {
                 type Output = Tensor<Self>;
                 #[inline]
@@ -1477,7 +1469,7 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
-    use super::*;
+    use flatk::*;
     use autodiff::F;
     impl NonTensor for F {}
     impl Scalar for F {}
@@ -1724,7 +1716,7 @@ macro_rules! impl_slice_add {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// assert_eq!(
@@ -1743,7 +1735,7 @@ impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// assert_eq!(
@@ -1762,7 +1754,7 @@ impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// assert_eq!(
@@ -1781,7 +1773,7 @@ impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// assert_eq!(
@@ -1803,7 +1795,7 @@ impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// assert_eq!(
@@ -1822,7 +1814,7 @@ impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// assert_eq!(
@@ -1844,7 +1836,7 @@ impl<T: AddAssign + Copy> Add<&Tensor<[T]>> for Tensor<Vec<T>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// assert_eq!(
@@ -1866,7 +1858,7 @@ impl<T: AddAssign + Copy> Add<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// assert_eq!(
@@ -1900,7 +1892,7 @@ macro_rules! impl_slice_add_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let b = vec![5,6,7,8];
 //    /// let mut tensor = Vector::new(b.clone());
@@ -1926,7 +1918,7 @@ macro_rules! impl_slice_add_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let b = vec![5,6,7,8];
 //    /// let mut tensor = b.clone().into_tensor();
@@ -1949,7 +1941,7 @@ macro_rules! impl_slice_add_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut b = vec![5,6,7,8];
 //    /// *b.as_mut_tensor() += a.view().into_tensor();
@@ -1974,7 +1966,7 @@ macro_rules! impl_slice_add_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut b = vec![5,6,7,8];
 //    /// *b.as_mut_tensor() += a.as_tensor();
@@ -1991,7 +1983,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// let mut tensor = Vector::new(a.clone());
@@ -2009,7 +2001,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```rust
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// let mut tensor = Vector::new(a.clone());
@@ -2027,7 +2019,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```rust
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// let mut tensor = Vector::new(a.clone());
@@ -2045,7 +2037,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// let mut view = a.view_mut().into_tensor();
@@ -2063,7 +2055,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// let mut view = a.view_mut().into_tensor();
@@ -2081,7 +2073,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// let mut view = a.view_mut().into_tensor();
@@ -2099,7 +2091,7 @@ impl<T: AddAssign + Copy> AddAssign<Tensor<Vec<T>>> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let mut a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// *a.as_mut_slice().as_mut_tensor() += Vector::new(b);
@@ -2116,7 +2108,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let mut a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// *a.as_mut_slice().as_mut_tensor() += b.as_slice().as_tensor();
@@ -2133,7 +2125,7 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![1,2,3,4];
 //    /// let b = vec![5,6,7,8];
 //    /// *a.as_mut_slice().as_mut_tensor() += b.as_slice().into_tensor();
@@ -2166,7 +2158,7 @@ macro_rules! impl_slice_sub {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![5,6,7,8];
 //    /// let b = vec![1,2,3,4];
 //    /// assert_eq!(
@@ -2185,7 +2177,7 @@ impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![5,6,7,8];
     /// let b = vec![1,2,3,4];
     /// assert_eq!(
@@ -2204,7 +2196,7 @@ impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![5,6,7,8];
 //    /// let b = vec![1,2,3,4];
 //    /// assert_eq!(
@@ -2223,7 +2215,7 @@ impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![5,6,7,8];
     /// let b = vec![1,2,3,4];
     /// assert_eq!(
@@ -2248,7 +2240,7 @@ impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![5,6,7,8];
 //    /// let b = vec![1,2,3,4];
 //    /// assert_eq!(
@@ -2267,7 +2259,7 @@ impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![5,6,7,8];
 //    /// let b = vec![1,2,3,4];
 //    /// assert_eq!(
@@ -2292,7 +2284,7 @@ impl<T: Scalar> Sub<&Tensor<[T]>> for Tensor<Vec<T>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![5,6,7,8];
     /// let b = vec![1,2,3,4];
     /// assert_eq!(
@@ -2314,7 +2306,7 @@ impl<T: Scalar> Sub<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![5,6,7,8];
 //    /// let b = vec![1,2,3,4];
 //    /// assert_eq!(
@@ -2347,7 +2339,7 @@ macro_rules! impl_sub_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut tensor = Vector::new(vec![5,6,7,8]);
 //    /// tensor -= SubsetTensor::new(a);
@@ -2368,7 +2360,7 @@ macro_rules! impl_sub_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut tensor = Vector::new(vec![5,6,7,8]);
 //    /// tensor -= a.as_tensor();
@@ -2389,7 +2381,7 @@ macro_rules! impl_sub_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut b = vec![5,6,7,8];
 //    /// *b.as_mut_tensor() -= SubsetTensor::new(a);
@@ -2410,7 +2402,7 @@ macro_rules! impl_sub_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = Subset::from_unique_ordered_indices(vec![1,3,4,5], vec![1,2,3,4,5,6,7]);
 //    /// let mut b = vec![5,6,7,8];
 //    /// *b.as_mut_tensor() -= a.into_tensor();
@@ -2427,7 +2419,7 @@ macro_rules! impl_sub_assign {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let mut tensor = Vector::new(vec![5,6,7,8]);
 //    /// tensor -= a.view().into_tensor();
@@ -2444,7 +2436,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let mut tensor = Vector::new(vec![5,6,7,8]);
     /// tensor -= a.view().as_tensor();
@@ -2461,7 +2453,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let mut b = vec![5,6,7,8];
 //    /// let mut view = b.view_mut().into_tensor();
@@ -2479,7 +2471,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let mut b = vec![5,6,7,8];
 //    /// let mut view = b.view_mut().into_tensor();
@@ -2497,7 +2489,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<Vec<T>> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let mut b = vec![5,6,7,8];
 //    /// let mut view = b.view_mut().into_tensor();
@@ -2515,7 +2507,7 @@ impl<T: SubAssign + Copy> SubAssign<Tensor<Vec<T>>> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let mut b = vec![5,6,7,8];
     /// *b.view_mut().as_mut_tensor() -= Vector::new(a);
@@ -2532,7 +2524,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// let mut b = vec![5,6,7,8];
     /// *b.view_mut().as_mut_tensor() -= a.view().as_tensor();
@@ -2549,7 +2541,7 @@ impl<T: SubAssign + Copy> SubAssign<&Tensor<[T]>> for Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// let mut b = vec![5,6,7,8];
 //    /// *b.as_mut_tensor() -= a.view().into_tensor();
@@ -2572,7 +2564,7 @@ impl<T: Scalar> Mul<T> for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![1,2,3,4];
     /// assert_eq!(Vector::new(vec![3,6,9,12]), a.view().into_tensor() * 3);
     /// ```
@@ -2591,7 +2583,7 @@ impl<T: Scalar> Mul<T> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let a = vec![1,2,3,4];
 //    /// assert_eq!(Vector::new(vec![3,6,9,12]), a.view().into_tensor() * 3);
 //    /// ```
@@ -2606,7 +2598,7 @@ impl<T: Scalar> Mul<T> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![1,2,3,4];
 //    /// let mut view = a.view_mut().into_tensor();
 //    /// view *= 3;
@@ -2625,7 +2617,7 @@ impl<T: Scalar> MulAssign<T> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let mut a = vec![1,2,3,4];
     /// *a.view_mut().as_mut_tensor() *= 3;
     /// assert_eq!(vec![3,6,9,12], a);
@@ -2649,7 +2641,7 @@ impl<T: Scalar> Div<T> for &Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let a = vec![3,6,9,12];
     /// assert_eq!(Vector::new(vec![1,2,3,4]), a.view().into_tensor() / 3);
     /// ```
@@ -2666,7 +2658,7 @@ impl<T: Scalar> Div<T> for &Tensor<[T]> {
 //    /// # Example
 //    ///
 //    /// ```
-//    /// use utils::soap::*;
+//    /// use tensr::*;
 //    /// let mut a = vec![3,6,9,12];
 //    /// let mut view = a.view_mut().into_tensor();
 //    /// view /= 3;
@@ -2685,7 +2677,7 @@ impl<T: Scalar> DivAssign<T> for Tensor<[T]> {
     /// # Example
     ///
     /// ```
-    /// use utils::soap::*;
+    /// use tensr::*;
     /// let mut a = vec![3,6,9,12];
     /// *a.as_mut_slice().as_mut_tensor() /= 3;
     /// assert_eq!(vec![1,2,3,4], a);

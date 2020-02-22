@@ -1,6 +1,7 @@
-use super::{IterExpr, Scalar, Tensor};
-use crate::soap::*;
+use super::*;
+use flatk::*;
 use unroll::unroll_for_loops;
+use crate::IntoTensor;
 
 /// A trait describing how a value can be constructed from an iterator expression.
 pub trait Evaluate<I> {
