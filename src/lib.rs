@@ -2,7 +2,7 @@ mod lazy;
 mod array_math;
 mod matrix;
 
-use flatk::*;
+pub use flatk::*;
 pub use lazy::*;
 pub use array_math::*;
 pub use matrix::*;
@@ -27,11 +27,57 @@ impl<T> NonTensor for [T] {}
 impl<'a, T> NonTensor for &'a [T] {}
 impl<'a, T> NonTensor for &'a mut [T] {}
 
-impl<S: NonTensor, I> From<S> for Subset<S, I> {
-    fn from(set: S) -> Subset<S, I> {
-        Subset::all(set)
-    }
-}
+/// A marker trait for local types which use generic implementations of various std::ops traits.
+/// Special types which use optimized implementations will not implement this marker. This is a
+/// workaround for specialization.
+pub trait LocalGeneric {}
+impl<S, I> LocalGeneric for Subset<S, I> {}
+impl<S, N> LocalGeneric for UniChunked<S, N> {}
+impl<S, O> LocalGeneric for Chunked<S, O> {}
+impl<S, T, I> LocalGeneric for Sparse<S, T, I> {}
+
+/// A marker trait identifying types that have dynamically determined sizes. These are basically all non-array types.
+pub trait DynamicCollection {}
+impl<S, I> DynamicCollection for Select<S, I> {}
+impl<S, I> DynamicCollection for Subset<S, I> {}
+impl<S, N> DynamicCollection for UniChunked<S, N> {}
+impl<S, O> DynamicCollection for Chunked<S, O> {}
+impl<S, T, I> DynamicCollection for Sparse<S, T, I> {}
+impl<T> DynamicCollection for std::ops::Range<T> {}
+impl<T> DynamicCollection for Vec<T> {}
+impl<T> DynamicCollection for [T] {}
+impl<'a, T> DynamicCollection for &'a [T] {}
+impl<'a, T> DynamicCollection for &'a mut [T] {}
+
+/// Many implementations do something special for sparse sets. All other sets are marked as dense
+/// to avoid collisions.
+pub trait Dense {}
+impl<S, I> Dense for Select<S, I> {}
+impl<S, I> Dense for Subset<S, I> {}
+impl<S, N> Dense for UniChunked<S, N> {}
+impl<S, O> Dense for Chunked<S, O> {}
+impl<T> Dense for std::ops::Range<T> {}
+impl<T> Dense for Vec<T> {}
+impl<T> Dense for [T] {}
+impl<'a, T> Dense for &'a [T] {}
+impl<'a, T> Dense for &'a mut [T] {}
+
+/// A marker trait for basic flat types without any implied hierarchical structure. This describes
+/// collections from the standard library.
+pub trait Flat {}
+impl<T> Flat for std::ops::RangeTo<T> {}
+impl<T> Flat for std::ops::Range<T> {}
+impl<T> Flat for Box<[T]> {}
+impl<T> Flat for Vec<T> {}
+impl<T> Flat for [T] {}
+impl<'a, T> Flat for &'a [T] {}
+impl<'a, T> Flat for &'a mut [T] {}
+
+//impl<S: NonTensor, I> From<S> for Subset<S, I> {
+//    fn from(set: S) -> Subset<S, I> {
+//        Subset::all(set)
+//    }
+//}
 
 
 /// A generic type that accepts algebraic expressions.
@@ -1068,7 +1114,7 @@ pub trait Scalar:
     + num_traits::NumAssign
     + num_traits::FromPrimitive
     + std::iter::Sum
-    + Dummy
+    //+ Dummy
     + IntoTensor<Tensor = Tensor<Self>>
 {
 }
@@ -1373,12 +1419,12 @@ macro_rules! impl_scalar {
             impl NonTensor for $type { }
             impl Scalar for $type { }
             impl Flat for $type { }
-            impl Dummy for $type {
-                #[inline]
-                unsafe fn dummy() -> Self {
-                    Self::default()
-                }
-            }
+            //impl Dummy for $type {
+            //    #[inline]
+            //    unsafe fn dummy() -> Self {
+            //        Self::default()
+            //    }
+            //}
 
             impl<'a> Expr<'a> for $type {
                 type Output = Tensor<$type>;
@@ -1696,14 +1742,15 @@ impl_array_tensors!(3);
 impl_array_tensors!(4);
 
 macro_rules! impl_slice_add {
-    ($other:ty) => {
-        fn add(self, other: $other) -> Self::Output {
-            assert_eq!(other.data.len(), self.data.len());
-                Tensor { data: self.data
-                    .iter()
-                    .zip(other.data.iter())
-                    .map(|(&a, &b)| a + b)
-                    .collect::<Vec<_>>() }
+    ($self:ident, $other:ident) => {
+        {
+            assert_eq!($other.data.len(), $self.data.len());
+            Tensor { data: $self.data
+                .iter()
+                .zip($other.data.iter())
+                .map(|(&a, &b)| a + b)
+                .collect::<Vec<_>>()
+            }
         }
     }
 }
@@ -1724,7 +1771,9 @@ macro_rules! impl_slice_add {
 //    ///     Tensor::new(a.view()) + Tensor::new(b.view())
 //    /// );
 //    /// ```
-//    impl_slice_add!(Self);
+//    fn add(self, other: Self) -> Self::Output {
+//        impl_slice_add!(self, other);
+//    }
 //}
 
 impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
@@ -1743,7 +1792,9 @@ impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
     ///     a.view().as_tensor() + b.view().as_tensor())
     /// );
     /// ```
-    impl_slice_add!(Self);
+    fn add(self, other: Self) -> Self::Output {
+        impl_slice_add!(self, other)
+    }
 }
 
 //impl<T: Add<Output = T> + Copy> Add<Tensor<&[T]>> for &Tensor<[T]> {
@@ -1762,7 +1813,9 @@ impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
 //    ///     a.view().as_tensor() + Tensor::new(b.view()))
 //    /// );
 //    /// ```
-//    impl_slice_add!(Tensor<&[T]>);
+//    fn add(self, other: Tensor<&[T]>) -> Self::Output {
+//      impl_slice_add!(self, other)
+//    }
 //}
 
 impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for &Tensor<[T]> {
@@ -1803,7 +1856,9 @@ impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    ///     a.view().into_tensor() + b.view().as_tensor())
 //    /// );
 //    /// ```
-//    impl_slice_add!(&Tensor<[T]>);
+//    fn add(self, other: Tensor<&[T]>) -> Self::Output {
+//      impl_slice_add!(self, other)
+//    }
 //}
 
 //impl<T: AddAssign + Copy> Add<Tensor<Vec<T>>> for Tensor<&[T]> {
@@ -2137,15 +2192,16 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<[T]> {
 //}
 
 macro_rules! impl_slice_sub {
-    ($other:ty) => {
-        fn sub(self, other: $other) -> Self::Output {
-            assert_eq!(other.data.len(), self.data.len());
+    ($self:ident, $other:ident) => {
+        {
+            assert_eq!($other.data.len(), $self.data.len());
             Tensor { data:
-                self.data
+                $self.data
                     .iter()
-                    .zip(other.data.iter())
+                    .zip($other.data.iter())
                     .map(|(&a, &b)| a - b)
-                    .collect::<Vec<_>>()}
+                    .collect::<Vec<_>>()
+            }
         }
     }
 }
@@ -2166,7 +2222,9 @@ macro_rules! impl_slice_sub {
 //    ///     a.view().into_tensor() - b.view().into_tensor()
 //    /// );
 //    /// ```
-//    impl_slice_sub!(Self);
+//    fn sub(self, other: Self) -> Self::Output {
+//      impl_slice_sub!(self, other);
+//    }
 //}
 
 impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
@@ -2185,7 +2243,9 @@ impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
     ///     a.view().as_tensor() - b.view().as_tensor())
     /// );
     /// ```
-    impl_slice_sub!(Self);
+    fn sub(self, other: Self) -> Self::Output {
+        impl_slice_sub!(self, other)
+    }
 }
 
 //impl<T: Sub<Output = T> + Copy> Sub<Tensor<&[T]>> for &Tensor<[T]> {
@@ -2204,7 +2264,9 @@ impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
 //    ///     a.view().as_tensor() - b.view().into_tensor())
 //    /// );
 //    /// ```
-//    impl_slice_sub!(Tensor<&[T]>);
+//    fn sub(self, other: Self) -> Self::Output {
+//        impl_slice_sub!(self, other)
+//    }
 //}
 
 impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for &Tensor<[T]> {
@@ -2248,7 +2310,9 @@ impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for &Tensor<[T]> {
 //    ///     a.view().into_tensor() - b.view().as_tensor())
 //    /// );
 //    /// ```
-//    impl_slice_sub!(&Tensor<[T]>);
+//    fn sub(self, other: Self) -> Self::Output {
+//        impl_slice_sub!(self, other)
+//    }
 //}
 
 //impl<T: Sub<Output = T> + Copy> Sub<Tensor<Vec<T>>> for Tensor<&[T]> {
@@ -2785,45 +2849,45 @@ macro_rules! impl_chunked_tensor_arithmetic {
          * Scalar division
          */
 
-        impl<S, O, T, D> Div<T> for Tensor<$chunked<S, O>>
-        where
-            S: IntoOwnedData<OwnedData = D>,
-            S: Div<T, Output = D>,
-        {
-            type Output = Tensor<$chunked<D, O>>;
+        //impl<S, O, T, D> Div<T> for Tensor<$chunked<S, O>>
+        //where
+        //    S: IntoOwnedData<OwnedData = D>,
+        //    S: Div<T, Output = D>,
+        //{
+        //    type Output = Tensor<$chunked<D, O>>;
 
-            fn div(self, other: T) -> Self::Output {
-                let $chunked { $chunks, data } = self.data;
-                Tensor {
-                    data: $chunked {
-                        $chunks,
-                        data: data / other,
-                    },
-                }
-            }
-        }
+        //    fn div(self, other: T) -> Self::Output {
+        //        let $chunked { $chunks, data } = self.data;
+        //        Tensor {
+        //            data: $chunked {
+        //                $chunks,
+        //                data: data / other,
+        //            },
+        //        }
+        //    }
+        //}
 
         /*
          * Mul/Div assign variants of the above operators.
          */
 
-        impl<S, O, T> MulAssign<T> for Tensor<$chunked<S, O>>
-        where
-            S: MulAssign<T>,
-        {
-            fn mul_assign(&mut self, other: T) {
-                self.data.data *= other;
-            }
-        }
+        //impl<S, O, T> MulAssign<T> for Tensor<$chunked<S, O>>
+        //where
+        //    S: MulAssign<T>,
+        //{
+        //    fn mul_assign(&mut self, other: T) {
+        //        self.data.data *= other;
+        //    }
+        //}
 
-        impl<S, O, T> DivAssign<T> for Tensor<$chunked<S, O>>
-        where
-            S: DivAssign<T>,
-        {
-            fn div_assign(&mut self, other: T) {
-                self.data.data /= other;
-            }
-        }
+        //impl<S, O, T> DivAssign<T> for Tensor<$chunked<S, O>>
+        //where
+        //    S: DivAssign<T>,
+        //{
+        //    fn div_assign(&mut self, other: T) {
+        //        self.data.data /= other;
+        //    }
+        //}
     };
 }
 

@@ -218,12 +218,35 @@ impl DSMatrix {
     }
 }
 
-impl<S, I> DSMatrixBase<S, I>
-where
-    Self: for<'a> View<'a, Type = DSMatrixView<'a>>,
-{
+//impl<S, I> DSMatrixBase<S, I>
+//where
+//    Self: for<'a> View<'a, Type = DSMatrixView<'a>>,
+//{
+//    /// Compress the matrix representation by consolidating duplicate entries.
+//    pub fn compressed(&self) -> DSMatrix {
+//        self.view()
+//            .into_data()
+//            .compressed(|a, &b| *a += b)
+//            .into_tensor()
+//    }
+//}
+//
+//impl<S, I> DSMatrixBase<S, I>
+//where
+//    Self: for<'a> View<'a, Type = DSMatrixView<'a>>,
+//{
+//    /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
+//    pub fn pruned(&self, keep: impl Fn(usize, usize, &f64) -> bool) -> DSMatrix {
+//        self.view()
+//            .into_data()
+//            .pruned(|a, &b| *a += b, keep)
+//            .into_tensor()
+//    }
+//}
+
+impl<T: Scalar, I: AsRef<[usize]>> DSMatrix<T, I> {
     /// Compress the matrix representation by consolidating duplicate entries.
-    pub fn compressed(&self) -> DSMatrix {
+    pub fn compressed(&self) -> DSMatrix<T> {
         self.view()
             .into_data()
             .compressed(|a, &b| *a += b)
@@ -231,12 +254,9 @@ where
     }
 }
 
-impl<S, I> DSMatrixBase<S, I>
-where
-    Self: for<'a> View<'a, Type = DSMatrixView<'a>>,
-{
+impl<T: Scalar, I: AsRef<[usize]>> DSMatrix<T, I> {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
-    pub fn pruned(&self, keep: impl Fn(usize, usize, &f64) -> bool) -> DSMatrix {
+    pub fn pruned(&self, keep: impl Fn(usize, usize, &T) -> bool) -> DSMatrix<T> {
         self.view()
             .into_data()
             .pruned(|a, &b| *a += b, keep)

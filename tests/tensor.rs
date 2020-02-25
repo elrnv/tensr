@@ -1,5 +1,5 @@
 /// This suite of tests checks various tensor operations.
-use utils::soap::*;
+use tensr::*;
 
 #[test]
 fn tensor_subassign() {
