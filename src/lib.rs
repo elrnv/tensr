@@ -1788,8 +1788,8 @@ impl<T: Add<Output = T> + Copy> Add for &Tensor<[T]> {
     /// let a = vec![1,2,3,4];
     /// let b = vec![5,6,7,8];
     /// assert_eq!(
-    ///     [6,8,10,12].as_tensor(),
-    ///     a.view().as_tensor() + b.view().as_tensor())
+    ///     vec![6,8,10,12].into_tensor(),
+    ///     a.view().as_tensor() + b.view().as_tensor()
     /// );
     /// ```
     fn add(self, other: Self) -> Self::Output {
@@ -2239,8 +2239,8 @@ impl<T: Sub<Output = T> + Copy> Sub for &Tensor<[T]> {
     /// let a = vec![5,6,7,8];
     /// let b = vec![1,2,3,4];
     /// assert_eq!(
-    ///     [4,4,4,4].as_tensor(),
-    ///     a.view().as_tensor() - b.view().as_tensor())
+    ///     vec![4,4,4,4].into_tensor(),
+    ///     a.view().as_tensor() - b.view().as_tensor()
     /// );
     /// ```
     fn sub(self, other: Self) -> Self::Output {

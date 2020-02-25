@@ -132,49 +132,49 @@ where
     }
 }
 
-//impl<I: Iterator + Expression, S, T, J, E> Evaluate<I> for Chunked<Sparse<S, T, J>>
-//where
-//    J: Default + Push<usize> + AsRef<[usize]> + Reserve,
-//    I::Item: Iterator<Item = IndexedExpr<E>> + Target<Target = T>,
-//    T: Set + Clone + PartialEq + std::fmt::Debug,
-//    S: Set + Default + Reserve + EvalExtend<E>,
-//{
-//    fn eval(iter: I) -> Self {
-//        // Chunked
-//        let mut offsets = vec![0];
-//        let n = iter.size_hint().0;
-//        offsets.reserve(n);
-//
-//        // Sparse
-//        let mut indices = J::default();
-//        indices.reserve(n);
-//        let mut target = None;
-//        let mut source = S::default();
-//        source.reserve_with_storage(n, iter.reserve_hint());
-//
-//        for row in iter {
-//            if target.is_none() {
-//                target = Some(row.target().clone());
-//            } else {
-//                debug_assert_eq!(Some(row.target()), target.as_ref());
-//            }
-//
-//            for IndexedExpr { index, expr } in row {
-//                indices.push(index);
-//                source.eval_extend(expr);
-//            }
-//            offsets.push(source.len());
-//        }
-//        Chunked::from_offsets(
-//            offsets,
-//            Sparse::new(Select::new(indices, target.unwrap()), source),
-//        )
-//    }
-//}
+impl<I: Iterator + Expression, S, T, J, E> Evaluate<I> for Chunked<Sparse<S, T, J>>
+where
+    J: Default + Push<usize> + AsRef<[usize]> + Reserve,
+    I::Item: Iterator<Item = IndexedExpr<E>> + Target<Target = T>,
+    T: Set + Clone + PartialEq + std::fmt::Debug,
+    S: Set + Default + Reserve + EvalExtend<E>,
+{
+    fn eval(iter: I) -> Self {
+        // Chunked
+        let mut offsets = vec![0];
+        let n = iter.size_hint().0;
+        offsets.reserve(n);
+
+        // Sparse
+        let mut indices = J::default();
+        indices.reserve(n);
+        let mut target = None;
+        let mut source = S::default();
+        source.reserve_with_storage(n, iter.reserve_hint());
+
+        for row in iter {
+            if target.is_none() {
+                target = Some(row.target().clone());
+            } else {
+                debug_assert_eq!(Some(row.target()), target.as_ref());
+            }
+
+            for IndexedExpr { index, expr } in row {
+                indices.push(index);
+                source.eval_extend(expr);
+            }
+            offsets.push(source.len());
+        }
+        Chunked::from_offsets(
+            offsets,
+            Sparse::new(Select::new(indices, target.unwrap()), source),
+        )
+    }
+}
 
 impl<I: Iterator, S> Evaluate<I> for Chunked<S>
 where
-    S: Set + Default + EvalExtend<I::Item>,
+    S: Set + Default + EvalExtend<I::Item> + Dense,
 {
     fn eval(iter: I) -> Self {
         let mut data = S::default();
@@ -430,42 +430,42 @@ where
     }
 }
 
-//impl<I: Iterator + Expression, S, T, J, E> EvalExtend<I> for Chunked<Sparse<S, T, J>>
-//where
-//    J: Push<usize> + Reserve,
-//    I::Item: Iterator<Item = IndexedExpr<E>> + Target<Target = T>,
-//    T: Set + PartialEq + std::fmt::Debug,
-//    S: Set + Reserve + EvalExtend<E>,
-//{
-//    #[inline]
-//    fn eval_extend(&mut self, iter: I) {
-//        let Chunked {
-//            chunks: offsets,
-//            data:
-//                Sparse {
-//                    selection: Select { indices, target },
-//                    source,
-//                },
-//        } = self;
-//
-//        // Chunked
-//        let n = iter.size_hint().0;
-//        offsets.reserve(n);
-//
-//        // Sparse
-//        indices.reserve(n);
-//        source.reserve_with_storage(n, iter.reserve_hint());
-//
-//        for row in iter {
-//            debug_assert_eq!(row.target(), target);
-//            for IndexedExpr { index, expr } in row {
-//                indices.push(index);
-//                source.eval_extend(expr);
-//            }
-//            offsets.push(source.len());
-//        }
-//    }
-//}
+impl<I: Iterator + Expression, S, T, J, E> EvalExtend<I> for Chunked<Sparse<S, T, J>>
+where
+    J: Push<usize> + Reserve,
+    I::Item: Iterator<Item = IndexedExpr<E>> + Target<Target = T>,
+    T: Set + PartialEq + std::fmt::Debug,
+    S: Set + Reserve + EvalExtend<E>,
+{
+    #[inline]
+    fn eval_extend(&mut self, iter: I) {
+        let Chunked {
+            chunks: offsets,
+            data:
+                Sparse {
+                    selection: Select { indices, target },
+                    source,
+                },
+        } = self;
+
+        // Chunked
+        let n = iter.size_hint().0;
+        offsets.reserve(n);
+
+        // Sparse
+        indices.reserve(n);
+        source.reserve_with_storage(n, iter.reserve_hint());
+
+        for row in iter {
+            debug_assert_eq!(row.target(), target);
+            for IndexedExpr { index, expr } in row {
+                indices.push(index);
+                source.eval_extend(expr);
+            }
+            offsets.push(source.len());
+        }
+    }
+}
 
 impl<I: Iterator, S> EvalExtend<I> for Chunked<S>
 where
