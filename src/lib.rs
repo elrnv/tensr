@@ -1,3 +1,21 @@
+//! 
+//! A prototype for a linear algebra library that aims at supporting:
+//!  - Multi-demensional array ("tensor") arithmetic (including scalars, vectors, matrices and higher dimensional structures),
+//!  - Small (array based) tensors,
+//!  - Dense dynamically allocated tensors,
+//!  - Sparse tensors,
+//!  - Lazy arithmetic,
+//!  - Block (sparse or dense) matrices,
+//!  - Special matrices (block diagonal, lower triangular, upper triangular, etc.),
+//!  - Flat data layout in all tensor types for faster processing,
+//!  - Arithmetic between compatible tensors.
+//! 
+//! The goals of this library (in no particular order) are
+//!  - performance
+//!  - simplicity (usage as well as implementation)
+//!  - safety
+//!
+
 mod array_math;
 mod lazy;
 mod matrix;

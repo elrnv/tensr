@@ -18,6 +18,7 @@ Some subset of the features above has already been implemented.
 The goals of this library (in no particular order) are
  - performance
  - simplicity (usage as well as implementation)
+ - safety
 
 Meeting these goals is work in progress.
 
