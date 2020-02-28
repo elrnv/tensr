@@ -1,5 +1,7 @@
 # `tensr`
 
+[![Build status](https://travis-ci.org/elrnv/tensr.svg?branch=master)](https://travis-ci.org/elrnv/tensr)
+
 A prototype for a linear algebra library that aims at supporting:
  - Multi-demensional array ("tensor") arithmetic (including scalars, vectors, matrices and higher dimensional structures),
  - Small (array based) tensors,

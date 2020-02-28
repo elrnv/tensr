@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Egor Larionov <egor.larionov@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+
+description = "Sparse and dense linear algebra library supporting lazy evaluation and block matrices"
 homepage = "https://github.com/elrnv/tensr"
 repository = "https://github.com/elrnv/tensr"
 documentation = "https://docs.rs/tensr"
