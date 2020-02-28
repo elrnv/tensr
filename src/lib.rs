@@ -1,17 +1,17 @@
-mod lazy;
 mod array_math;
+mod lazy;
 mod matrix;
 
+pub use array_math::*;
 pub use flatk::*;
 pub use lazy::*;
-pub use array_math::*;
 pub use matrix::*;
 use num_traits::{Float, One, Zero};
-use typenum::Unsigned;
 use std::num::FpCategory;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
+use typenum::Unsigned;
 use unroll::unroll_for_loops;
 
 /// A marker trait indicating non-tensor types. These are all supported collecitons.
@@ -78,7 +78,6 @@ impl<'a, T> Flat for &'a mut [T] {}
 //        Subset::all(set)
 //    }
 //}
-
 
 /// A generic type that accepts algebraic expressions.
 ///
@@ -1515,8 +1514,8 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
-    use flatk::*;
     use autodiff::F;
+    use flatk::*;
     impl NonTensor for F {}
     impl Scalar for F {}
     impl Flat for F {}
@@ -1742,17 +1741,17 @@ impl_array_tensors!(3);
 impl_array_tensors!(4);
 
 macro_rules! impl_slice_add {
-    ($self:ident, $other:ident) => {
-        {
-            assert_eq!($other.data.len(), $self.data.len());
-            Tensor { data: $self.data
+    ($self:ident, $other:ident) => {{
+        assert_eq!($other.data.len(), $self.data.len());
+        Tensor {
+            data: $self
+                .data
                 .iter()
                 .zip($other.data.iter())
                 .map(|(&a, &b)| a + b)
-                .collect::<Vec<_>>()
-            }
+                .collect::<Vec<_>>(),
         }
-    }
+    }};
 }
 
 //impl<T: Add<Output = T> + Copy> Add for Tensor<&[T]> {
@@ -2192,18 +2191,17 @@ impl<T: AddAssign + Copy> AddAssign<&Tensor<[T]>> for Tensor<[T]> {
 //}
 
 macro_rules! impl_slice_sub {
-    ($self:ident, $other:ident) => {
-        {
-            assert_eq!($other.data.len(), $self.data.len());
-            Tensor { data:
-                $self.data
-                    .iter()
-                    .zip($other.data.iter())
-                    .map(|(&a, &b)| a - b)
-                    .collect::<Vec<_>>()
-            }
+    ($self:ident, $other:ident) => {{
+        assert_eq!($other.data.len(), $self.data.len());
+        Tensor {
+            data: $self
+                .data
+                .iter()
+                .zip($other.data.iter())
+                .map(|(&a, &b)| a - b)
+                .collect::<Vec<_>>(),
         }
-    }
+    }};
 }
 
 //impl<T: Sub<Output = T> + Copy> Sub for Tensor<&[T]> {

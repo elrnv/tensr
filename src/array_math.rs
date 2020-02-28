@@ -741,7 +741,6 @@ macro_rules! impl_array_vectors {
         //    }
         //}
 
-
         #[cfg(feature = "approx")]
         impl<U, T: approx::AbsDiffEq<U>> approx::AbsDiffEq<Tensor<[U; $n]>> for Tensor<[T; $n]>
         where
@@ -838,9 +837,17 @@ macro_rules! impl_square_reshape {
 macro_rules! impl_unichunked_expr {
     ($n:expr, $nty:ident) => {
         impl<T, I> std::ops::Mul<Tensor<[T; $n]>> for UniChunkedIterExpr<I, $nty>
-        where Self: ExprSize,
+        where
+            Self: ExprSize,
         {
-            type Output = CwiseUnExpr<CwiseBinExpr<UniChunkedIterExpr<I, $nty>, Repeat<Tensor<[T; $n]>>, CwiseMultiplication>, Summation>;
+            type Output = CwiseUnExpr<
+                CwiseBinExpr<
+                    UniChunkedIterExpr<I, $nty>,
+                    Repeat<Tensor<[T; $n]>>,
+                    CwiseMultiplication,
+                >,
+                Summation,
+            >;
             #[inline]
             fn mul(self, rhs: Tensor<[T; $n]>) -> Self::Output {
                 CwiseUnExpr::new(CwiseBinExpr::new(self, Repeat::new(rhs)))
@@ -848,30 +855,31 @@ macro_rules! impl_unichunked_expr {
         }
 
         impl<T: Scalar, S, D> EvalExtend<Tensor<[T; $n]>> for UniChunked<S, $nty>
-            where Self: Push<D>,
-                  Tensor<[T; $n]>: IntoData<Data = D>,
+        where
+            Self: Push<D>,
+            Tensor<[T; $n]>: IntoData<Data = D>,
         {
             #[inline]
             fn eval_extend(&mut self, tensor: Tensor<[T; $n]>) {
                 self.push(tensor.into_data());
             }
         }
-    }
+    };
 }
 
 impl_square_reshape!(9, 3);
 impl_square_reshape!(4, 2);
 impl_square_reshape!(16, 4);
 
-impl_unichunked_expr!(1,  U1);
-impl_unichunked_expr!(2,  U2);
-impl_unichunked_expr!(3,  U3);
-impl_unichunked_expr!(4,  U4);
-impl_unichunked_expr!(5,  U5);
-impl_unichunked_expr!(6,  U6);
-impl_unichunked_expr!(7,  U7);
-impl_unichunked_expr!(8,  U8);
-impl_unichunked_expr!(9,  U9);
+impl_unichunked_expr!(1, U1);
+impl_unichunked_expr!(2, U2);
+impl_unichunked_expr!(3, U3);
+impl_unichunked_expr!(4, U4);
+impl_unichunked_expr!(5, U5);
+impl_unichunked_expr!(6, U6);
+impl_unichunked_expr!(7, U7);
+impl_unichunked_expr!(8, U8);
+impl_unichunked_expr!(9, U9);
 impl_unichunked_expr!(10, U10);
 impl_unichunked_expr!(11, U11);
 impl_unichunked_expr!(12, U12);
@@ -2105,7 +2113,7 @@ where
 ///
 /// Rodrigues' formula is used for this computation.
 #[inline]
-pub fn rotation<T: Real,V: Into<[T;3]>>(v: V) -> Matrix3<T> {
+pub fn rotation<T: Real, V: Into<[T; 3]>>(v: V) -> Matrix3<T> {
     let v = v.into().into_tensor();
     let angle = v.norm();
     let mut res = Matrix3::identity();

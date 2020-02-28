@@ -810,8 +810,11 @@ impl<I: AsRef<[usize]>, J: AsRef<[usize]>> Mul<BlockDiagonalMatrix3x2<f64, J>>
         assert_eq!(Set::len(self_data), other_data.len());
         assert_eq!(2, self_data.inner_chunk_size());
         let mut out = BlockDiagonalMatrix::from_flat(vec![0.0; 4 * self_data.len()]);
-        for ((out_block, lhs_block), rhs_block) in
-            out.0.iter_mut().zip(self_data.iter()).zip(other_data.iter())
+        for ((out_block, lhs_block), rhs_block) in out
+            .0
+            .iter_mut()
+            .zip(self_data.iter())
+            .zip(other_data.iter())
         {
             let out_mtx: &mut Matrix2<f64> = out_block.as_matrix();
             *out_mtx = lhs_block.as_matrix().transpose() * *rhs_block.as_matrix();
@@ -830,8 +833,11 @@ impl<I: AsRef<[usize]>, J: AsRef<[usize]>> Mul<BlockDiagonalMatrix3x1<f64, J>>
         assert_eq!(Set::len(self_data), other_data.len());
         assert_eq!(self_data.inner_chunk_size(), 1);
         let mut out = DiagonalMatrixBase::new(vec![0.0; self_data.len()]);
-        for ((out_entry, lhs_block), rhs_block) in
-            out.0.iter_mut().zip(self_data.iter()).zip(other_data.iter())
+        for ((out_entry, lhs_block), rhs_block) in out
+            .0
+            .iter_mut()
+            .zip(self_data.iter())
+            .zip(other_data.iter())
         {
             *out_entry = (lhs_block.as_matrix().transpose() * *rhs_block.as_matrix()).data[0][0];
         }
@@ -1303,7 +1309,7 @@ impl From<DBlockMatrix3> for DSBlockMatrix3 {
         Chunked::from_sizes(
             vec![num_cols; num_rows], // num_cols blocks for every row
             Sparse::from_dim(
-                (0..num_cols).cycle().take(num_cols*num_rows).collect(), // No sparsity
+                (0..num_cols).cycle().take(num_cols * num_rows).collect(), // No sparsity
                 num_cols,
                 dense.into_data().data,
             ),
@@ -1371,8 +1377,6 @@ impl From<BlockDiagonalMatrix2> for DSBlockMatrix2 {
         .into_tensor()
     }
 }
-
-
 
 /*
  * The following is an attempt at generic implementation of the function below

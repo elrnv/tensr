@@ -2155,7 +2155,8 @@ mod tests {
             Sparse::from_dim(vec![3, 4, 3], 6, vec![4, 5, 6]),
         );
 
-        let mut c: Chunked<Sparse<Vec<i32>>> = Chunked::from_offsets(vec![0], Sparse::from_dim(vec![], 6, vec![]));
+        let mut c: Chunked<Sparse<Vec<i32>>> =
+            Chunked::from_offsets(vec![0], Sparse::from_dim(vec![], 6, vec![]));
         c.eval_extend(b.expr());
 
         assert_eq!(
