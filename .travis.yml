@@ -1,8 +1,9 @@
 language: rust
 
 rust:
-  - nightly
   - stable
+  - beta
+  - nightly
  
 matrix:
   allow_failures:
@@ -12,6 +13,5 @@ matrix:
 cache: cargo
 
 script:
-  - cargo build --verbose
-  - cargo test --verbose
-  - cargo test --verbose --all-features
+  - cargo build --verbose --all
+  - cargo test --verbose --all
