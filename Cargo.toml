@@ -12,7 +12,7 @@ documentation = "https://docs.rs/tensr"
 keywords = ["tensor", "sparse", "lazy", "block", "linear algebra"]
 
 [dependencies]
-flatk = { path = "../flatk" }
+flatk = "0.1"
 rand = "0.5"
 reinterpret = "0.2"
 sprs = { version = "0.6.4", optional = true }
