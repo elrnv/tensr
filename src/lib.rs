@@ -1533,15 +1533,15 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
     use autodiff::F;
-    use flatk::*;
+    use super::*;
     impl NonTensor for F {}
     impl Scalar for F {}
     impl Flat for F {}
-    impl Dummy for F {
-        unsafe fn dummy() -> Self {
-            Self::default()
-        }
-    }
+    //impl Dummy for F {
+    //    unsafe fn dummy() -> Self {
+    //        Self::default()
+    //    }
+    //}
     impl IntoTensor for F {
         type Tensor = Tensor<F>;
         #[inline]
