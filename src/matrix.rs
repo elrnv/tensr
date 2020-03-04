@@ -280,8 +280,8 @@ impl<S: Set> DiagonalMatrixBase<S, Box<[usize]>> {
     /// sometimes requires additional generic parameters to be explicitly specified.
     /// This function assumes `Box<[usize]>` as a placeholder for indices where the subset is
     /// entire.
-    pub fn new<T: Into<Subset<S, Box<[usize]>>>>(set: T) -> Self {
-        DiagonalMatrixBase(set.into())
+    pub fn new(set: S) -> Self {
+        DiagonalMatrixBase(Subset::all(set))
     }
 }
 
@@ -410,8 +410,8 @@ where
     /// sometimes requires additional generic parameters to be explicitly specified.
     /// This function assumes `Box<[usize]>` as a placeholder for indices where the subset is
     /// entire.
-    pub fn new<T: Into<Subset<UniChunked<S, N>>>>(chunks: T) -> Self {
-        DiagonalBlockMatrixBase(chunks.into())
+    pub fn new(chunks: UniChunked<S, N>) -> Self {
+        DiagonalBlockMatrixBase(Subset::all(chunks))
     }
 }
 
@@ -419,8 +419,8 @@ impl<'a, S, N: Dimension> DiagonalBlockMatrixBase<S, &'a [usize], N>
 where
     UniChunked<S, N>: Set,
 {
-    pub fn view<T: Into<SubsetView<'a, UniChunked<S, N>>>>(chunks: T) -> Self {
-        DiagonalBlockMatrixBase(chunks.into())
+    pub fn view(chunks: UniChunked<S, N>) -> Self {
+        DiagonalBlockMatrixBase(Subset::all(chunks))
     }
 }
 
@@ -430,7 +430,7 @@ where
 {
     /// Explicit constructor from subsets.
     pub fn from_subset(chunks: Subset<UniChunked<S, N>, I>) -> Self {
-        DiagonalBlockMatrixBase(chunks.into())
+        DiagonalBlockMatrixBase(chunks)
     }
     /// Produce a mutable view of this diagonal block matrix as a tensor. When interprepted as a tensor the data
     /// contained in this matrix represents a dense matrix with `self.0.len()` rows and `N` columns.
@@ -623,8 +623,8 @@ where
     /// sometimes requires additional generic parameters to be explicitly specified.
     /// This function assumes `Box<[usize]>` as a placeholder for indices where the subset is
     /// entire.
-    pub fn new<T: Into<Subset<UniChunked<UniChunked<S, M>, N>, Box<[usize]>>>>(chunks: T) -> Self {
-        BlockDiagonalMatrixBase(chunks.into())
+    pub fn new(chunks: UniChunked<UniChunked<S, M>, N>) -> Self {
+        BlockDiagonalMatrixBase(Subset::all(chunks))
     }
 }
 
