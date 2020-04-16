@@ -20,17 +20,20 @@ mod array_math;
 mod lazy;
 mod matrix;
 
-pub use array_math::*;
-pub use flatk::*;
-pub use lazy::*;
-pub use matrix::*;
-use num_traits::{Float, One, Zero};
 use std::num::FpCategory;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
+use std::fmt;
+
+use num_traits::{Float, One, Zero};
 use typenum::Unsigned;
 use unroll::unroll_for_loops;
+
+pub use array_math::*;
+pub use flatk::*;
+pub use lazy::*;
+pub use matrix::*;
 
 /// A marker trait indicating non-tensor types. These are all supported collecitons.
 pub trait NonTensor {}
@@ -104,10 +107,16 @@ impl<'a, T> Flat for &'a mut [T] {}
 /// outer index `I0` and inner index `I1`. This means that a transpose can be implemented simply by
 /// swapping positions of `I0` and `I1`, which means a matrix with `I == (I1, I0)` has structure
 /// that is transpose of the matix with `I = (I0, I1)`.
-#[derive(Copy, Clone, Debug, PartialOrd)]
+#[derive(Copy, Clone, PartialOrd)]
 #[repr(transparent)]
 pub struct Tensor<T: ?Sized> {
     pub data: T,
+}
+
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Tensor<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("T{:?}", &self.data))
+    }
 }
 
 impl<U: ?Sized, T: ?Sized + PartialEq<U>> PartialEq<Tensor<U>> for Tensor<T> {
@@ -1125,7 +1134,7 @@ impl<T: Scalar> IntoTensor for Tensor<T> {
 pub trait Scalar:
     Pod
     + Flat
-    + std::fmt::Debug
+    + fmt::Debug
     + PartialOrd
     + num_traits::NumCast
     + num_traits::NumAssign
@@ -3087,5 +3096,11 @@ mod tests {
         assert_eq!(f.as_tensor().lp_norm(LpNorm::P(2)), 6.0);
         assert_eq!(f.as_tensor().lp_norm(LpNorm::P(1)), 14.0);
         assert_eq!(f.as_tensor().lp_norm(LpNorm::Inf), 4.0);
+    }
+
+    #[test]
+    fn debug_format_tensor() {
+        let a = vec![1, 2, 3].into_tensor();
+        assert_eq!("T[1, 2, 3]", &format!("{:?}", a));
     }
 }
