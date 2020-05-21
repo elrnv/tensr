@@ -26,7 +26,7 @@ use std::ops::{
 };
 use std::fmt;
 
-use num_traits::{NumOps, Float, One, Zero};
+use num_traits::{NumAssignOps, NumOps, Float, One, Zero};
 use typenum::Unsigned;
 use unroll::unroll_for_loops;
 
@@ -1586,8 +1586,8 @@ mod autodiff_impls {
     }
 }
 
-pub trait Real: Scalar + Float + NumOps<f64> {}
-impl<T> Real for T where T: Scalar + Float + NumOps<f64> {}
+pub trait Real: Scalar + Float + NumOps<f64> + NumAssignOps<f64> {}
+impl<T> Real for T where T: Scalar + Float + NumOps<f64> + NumAssignOps<f64> {}
 
 /*
  * Implement 0-tensor algebra.
@@ -3112,5 +3112,14 @@ mod tests {
         }
 
         assert_eq!(add_one(1.0), 2.0);
+
+        fn add_one_mut<T: Real>(x: &mut T) {
+            *x += 1.0;
+        }
+
+        let mut x = 1.0;
+        add_one_mut(&mut x);
+
+        assert_eq!(x, 2.0);
     }
 }
