@@ -26,7 +26,7 @@ use std::ops::{
 };
 use std::fmt;
 
-use num_traits::{Float, One, Zero};
+use num_traits::{NumOps, Float, One, Zero};
 use typenum::Unsigned;
 use unroll::unroll_for_loops;
 
@@ -1586,8 +1586,8 @@ mod autodiff_impls {
     }
 }
 
-pub trait Real: Scalar + Float {}
-impl<T> Real for T where T: Scalar + Float {}
+pub trait Real: Scalar + Float + NumOps<f64> {}
+impl<T> Real for T where T: Scalar + Float + NumOps<f64> {}
 
 /*
  * Implement 0-tensor algebra.
@@ -3102,5 +3102,15 @@ mod tests {
     fn debug_format_tensor() {
         let a = vec![1, 2, 3].into_tensor();
         assert_eq!("T[1, 2, 3]", &format!("{:?}", a));
+    }
+
+    #[test]
+    fn real_f64_interop_test() {
+        // Check that we can interact with reals using f64 types.
+        fn add_one<T: Real>(x: T) -> T {
+            x + 1.0
+        }
+
+        assert_eq!(add_one(1.0), 2.0);
     }
 }

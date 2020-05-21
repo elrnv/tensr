@@ -976,6 +976,36 @@ macro_rules! impl_array_matrices {
             }
         }
 
+        impl<T: Pod> Tensor<[Tensor<[T; $c]>; $r]> {
+            /// Low level utility to compute a cartesian product of two tensors along the outer dimension with a given function.
+            ///
+            /// If the given function is multiplication, then the result is an outer product.
+            #[inline]
+            #[unroll_for_loops]
+            pub fn from_cartesian<A, B, F>(a: Tensor<[A; $r]>, b: Tensor<[B; $c]>, mut f: F) -> Self 
+            where
+                A: Copy,
+                B: Copy,
+                F: FnMut(A, B) -> T,
+            {
+                // We use MaybeUninit here mostly to avoid a Zero trait bound.
+                let mut out: [[MaybeUninit<T>; $c]; $r] = unsafe { MaybeUninit::uninit().assume_init() };
+                for i in 0..$r {
+                    for j in 0..$c {
+                        out[i][j] = MaybeUninit::new(f(a.data[i], b.data[j]));
+                    }
+                }
+                // The Pod trait bound ensures safety here in release builds.
+                // Sanity check here just in debug builds only, since this code is very likely in a
+                // critical section.
+                debug_assert_eq!(
+                    std::mem::size_of::<[[MaybeUninit<T>; $c]; $r]>(),
+                    std::mem::size_of::<Tensor<[Tensor<[T; $c]>; $r]>>()
+                );
+                unsafe { std::mem::transmute_copy::<_, Tensor<[Tensor<[T; $c]>; $r]>>(&out) }
+            }
+        }
+
         impl<T: Copy> Tensor<[Tensor<[T; $c]>; $r]> {
             /// Similar to `map` but applies the given function to each inner element.
             #[inline]
@@ -1023,6 +1053,7 @@ macro_rules! impl_array_matrices {
             pub fn diag(diag: &[S]) -> Self {
                 Self::from_diag_iter(diag.into_iter().cloned())
             }
+            #[inline]
             pub fn from_diag_iter<Iter: IntoIterator<Item = S>>(diag: Iter) -> Self {
                 let mut out = Self::zeros();
                 for (i, elem) in diag.into_iter().take($r.min($c)).enumerate() {
@@ -2301,5 +2332,14 @@ mod tests {
     fn lower_triangular_vec() {
         let m = Matrix3::new([[0, 1, 2], [3, 4, 5], [6, 7, 8]]);
         assert_eq!(m.lower_triangular_vec(), Vector6::new([0, 3, 4, 6, 7, 8]));
+    }
+
+    #[test]
+    fn cartesian_product() {
+        let a = Vector3::new([1.0, 2.0, 3.0]);
+        let b = Vector3::new([4.0, 5.0, 6.0]);
+        let m = a * b.transpose();
+        let m2 = Matrix3::from_cartesian(a, b, |a, b| a * b);
+        assert_eq!(m, m2);
     }
 }
