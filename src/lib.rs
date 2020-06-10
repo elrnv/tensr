@@ -1586,8 +1586,12 @@ mod autodiff_impls {
     }
 }
 
-pub trait Real: Scalar + Float + NumOps<f64> + NumAssignOps<f64> {}
-impl<T> Real for T where T: Scalar + Float + NumOps<f64> + NumAssignOps<f64> {}
+pub trait Real: Scalar + Float {}
+impl<T> Real for T where T: Scalar + Float {}
+
+/// An extension to the real trait that allows ops with f64 floats.
+pub trait Real64: Real + NumOps<f64> + NumAssignOps<f64> {}
+impl<T> Real64 for T where T: Real + NumOps<f64> + NumAssignOps<f64> {}
 
 /*
  * Implement 0-tensor algebra.
@@ -3107,13 +3111,13 @@ mod tests {
     #[test]
     fn real_f64_interop_test() {
         // Check that we can interact with reals using f64 types.
-        fn add_one<T: Real>(x: T) -> T {
+        fn add_one<T: Real64>(x: T) -> T {
             x + 1.0
         }
 
         assert_eq!(add_one(1.0), 2.0);
 
-        fn add_one_mut<T: Real>(x: &mut T) {
+        fn add_one_mut<T: Real64>(x: &mut T) {
             *x += 1.0;
         }
 

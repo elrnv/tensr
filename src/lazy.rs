@@ -2356,6 +2356,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn subtract_different_types() {
+        let a: Subset<_, Vec<usize>>  = Subset::all(Chunked3::from_flat(vec![1,2,3,4,5,6]));
+        let b = vec![Vector3::new([1,2,3]); 2];
+
+        let res: Chunked3<Vec<u64>> = (a.expr() - b.expr()).eval();
+        assert_eq!(res, Chunked3::from_flat(vec![0, 0, 0, 3, 3, 3]));
+    }
+
     //#[test]
     //fn tensor_tensor_mul() {
     //    //let flat_a = ChunkedN::from_flat_with_stride(vec![1,2,5,6, 3,4,7,8, 9,10,13,14, 11,12,15,16], 4);
