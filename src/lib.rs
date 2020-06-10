@@ -808,11 +808,11 @@ impl<S: Clear> Clear for Tensor<S> {
         self.data.clear();
     }
 }
-impl<S: IntoFlat> IntoFlat for Tensor<S> {
-    type FlatType = Tensor<S::FlatType>;
-    fn into_flat(self) -> Self::FlatType {
+impl<S: IntoStorage> IntoStorage for Tensor<S> {
+    type StorageType = Tensor<S::StorageType>;
+    fn into_storage(self) -> Self::StorageType {
         Tensor {
-            data: self.data.into_flat(),
+            data: self.data.into_storage(),
         }
     }
 }

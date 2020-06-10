@@ -19,7 +19,7 @@ where
         let num_cols = view.num_total_cols();
 
         let view = view.as_data();
-        let values = view.clone().into_flat().as_ref().to_vec();
+        let values = view.clone().into_storage().as_ref().to_vec();
 
         let (rows, cols) = {
             view.into_iter()
@@ -54,7 +54,7 @@ impl Into<sprs::CsMat<f64>> for DSMatrix {
                 .unzip()
         };
 
-        let values = self.into_data().into_flat();
+        let values = self.into_data().into_storage();
 
         sprs::TriMat::from_triplets((num_rows, num_cols), rows, cols, values).to_csr()
     }

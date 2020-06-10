@@ -1335,7 +1335,7 @@ impl<I: AsRef<[usize]>> From<DiagonalBlockMatrix3<f64, I>> for DSBlockMatrix3 {
             Sparse::from_dim(
                 (0..num_cols).collect(), // Diagonal sparsity pattern
                 num_cols,
-                Chunked3::from_flat(Chunked3::from_array_vec(data.into_flat())),
+                Chunked3::from_flat(Chunked3::from_array_vec(data.into_storage())),
             ),
         )
         .into_tensor()
