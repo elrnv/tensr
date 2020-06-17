@@ -77,7 +77,7 @@ where
     fn expr_mut(&'a mut self) -> Self::Output {
         ChunkedIterExpr {
             data: self.data.view_mut(),
-            offsets: self.chunks.view(),
+            chunk_sizes: self.chunks.view().into_sizes(),
         }
     }
 }

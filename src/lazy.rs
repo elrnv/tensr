@@ -399,7 +399,7 @@ pub type ChunkedNIterExpr<S> = UniChunkedIterExpr<S, usize>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChunkedIterExpr<'a, S> {
-    offsets: Offsets<&'a [usize]>,
+    chunk_sizes: Sizes<'a>,
     data: S,
 }
 
@@ -685,7 +685,7 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let data_slice = std::mem::replace(&mut self.data, unsafe { Dummy::dummy() });
-        self.offsets.pop_offset().map(move |n| {
+        self.chunk_sizes.next().map(move |n| {
             let (l, r) = data_slice.split_at(n);
             self.data = r;
             l.into_expr()
@@ -693,7 +693,7 @@ where
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.offsets.len() - 1;
+        let n = self.chunk_sizes.len();
         (n, Some(n))
     }
 }
@@ -1081,7 +1081,7 @@ impl<'a, S> IntoExpr for ChunkedView<'a, S> {
     fn into_expr(self) -> Self::Expr {
         ChunkedIterExpr {
             data: self.data,
-            offsets: self.chunks,
+            chunk_sizes: self.chunks.into_sizes(),
         }
     }
 }
@@ -1184,7 +1184,7 @@ where
     fn expr(&'a self) -> Self::Output {
         ChunkedIterExpr {
             data: self.data.view(),
-            offsets: self.chunks.view(),
+            chunk_sizes: self.chunks.view().into_sizes(),
         }
     }
 }
