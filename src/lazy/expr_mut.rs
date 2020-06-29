@@ -30,6 +30,7 @@ impl<'a, T> ExprSize for SliceIterExprMut<'a, T> {
     }
 }
 impl<'a, T> TotalExprSize for SliceIterExprMut<'a, T> {
+    #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
         Some(self.0.size_hint().1.unwrap_or(self.0.size_hint().0))
     }

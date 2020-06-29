@@ -1,8 +1,8 @@
 use approx::assert_relative_eq;
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use rayon::prelude::*;
-use utils::soap::*;
-use utils::zip;
+use flatk::*;
+use tensr::*;
 
 #[cfg(feature = "packed_simd")]
 use packed_simd::*;
@@ -28,7 +28,7 @@ pub fn outer_write_local(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
 pub fn lazy_expr4(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let n = v.len() / 4;
     let m4 =
-        ChunkedN::from_flat_with_stride(Chunked4::from_flat(Chunked4::from_flat(m.into_flat())), n);
+        ChunkedN::from_flat_with_stride(Chunked4::from_flat(Chunked4::from_flat(m.into_storage())), n);
     let v4 = Chunked4::from_flat(v);
     let mut out4 = Chunked4::from_flat(vec![0.0; v.len()]);
     for (row, out) in m4.iter().zip(out4.iter_mut()) {
@@ -36,7 +36,7 @@ pub fn lazy_expr4(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
             *out.as_mut_tensor() += (*col.as_matrix()) * Vector4::new(rhs);
         }
     }
-    out4.into_flat()
+    out4.into_storage()
 }
 
 pub fn lazy_expr(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
@@ -91,7 +91,7 @@ pub fn inner_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
 pub fn inner_outer_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let mut out = vec![0.0; v.len()];
     let n = v.len();
-    let m = m.into_flat();
+    let m = m.into_storage();
     for (rows4, outs4) in m.chunks_exact(4 * n).zip(out.chunks_exact_mut(4)) {
         unsafe {
             let row0 = rows4.get_unchecked(0..n);
@@ -99,8 +99,8 @@ pub fn inner_outer_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
             let row2 = rows4.get_unchecked(2 * n..3 * n);
             let row3 = rows4.get_unchecked(3 * n..);
             let mut outsimd = f64x4::splat(0.0);
-            for (&r0, &r1, &r2, &r3, &col) in
-                zip!(row0.iter(), row1.iter(), row2.iter(), row3.iter(), v.iter())
+            for ((((&r0, &r1), &r2), &r3), &col) in
+                row0.iter().zip(row1.iter()).zip(row2.iter()).zip(row3.iter()).zip(v.iter())
             {
                 let r = f64x4::new(r0, r1, r2, r3);
                 outsimd += r * col;
@@ -128,7 +128,7 @@ pub fn outer_read_local_par(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let size = v.len();
     let n = 24;
     let mut out_24 = vec![vec![0.0; size]; n + 1];
-    let m = m.into_flat();
+    let m = m.into_storage();
     let chunk_size = size / n;
     m.par_chunks(size * chunk_size)
         .zip(v.par_chunks(chunk_size))
@@ -166,7 +166,7 @@ pub fn inner_par_chunked(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let size = v.len();
     let n = 24;
     let chunk_size = size / n;
-    let m = m.into_flat();
+    let m = m.into_storage();
     m.par_chunks(size * chunk_size)
         .zip(out.par_chunks_mut(chunk_size))
         .for_each(|(m, out)| {

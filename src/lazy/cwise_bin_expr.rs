@@ -117,17 +117,21 @@ impl<L, R: ExactSizeIterator> ExactSizeIterator for CwiseBinExpr<Tensor<L>, R, M
  * Dense * Dense
  */
 
-impl<L: Iterator + DenseExpr, R: Iterator + DenseExpr, F, Out> Iterator for CwiseBinExpr<L, R, F>
+impl<L, R, F, Out> Iterator for CwiseBinExpr<L, R, F>
 where
     F: BinOp<L::Item, R::Item, Output = Out>,
+    L: Iterator + DenseExpr,
+    R: Iterator + DenseExpr,
 {
     type Item = Out;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.left
-            .next()
-            .and_then(|l| self.right.next().map(|r| self.op.apply(l, r)))
+        // TODO: optimize this function, see std::iter::Zip for reference.
+        let l = self.left.next()?;
+        let r = self.right.next()?;
+        Some(self.op.apply(l, r))
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let left = self.left.size_hint();

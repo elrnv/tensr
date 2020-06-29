@@ -2,8 +2,8 @@
 pub use cgmath::prelude::*;
 pub use rand::{FromEntropy, IsaacRng, Rng};
 pub use std::ops::Mul;
-pub use utils::soap;
-pub use utils::soap::{Expr, IntoData, Matrix};
+pub use flatk::*;
+pub use tensr::{Expr, IntoData, Matrix};
 
 // Cgmath
 
@@ -66,23 +66,23 @@ pub fn vector4_cgmath() -> cgmath::Vector4<f64> {
 
 // Local maths
 
-pub fn matrix2() -> soap::Matrix2<f64> {
+pub fn matrix2() -> tensr::Matrix2<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Matrix2::new([[rng.gen(), rng.gen()], [rng.gen(), rng.gen()]])
+    tensr::Matrix2::new([[rng.gen(), rng.gen()], [rng.gen(), rng.gen()]])
 }
 
-pub fn matrix3() -> soap::Matrix3<f64> {
+pub fn matrix3() -> tensr::Matrix3<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Matrix3::new([
+    tensr::Matrix3::new([
         [rng.gen(), rng.gen(), rng.gen()],
         [rng.gen(), rng.gen(), rng.gen()],
         [rng.gen(), rng.gen(), rng.gen()],
     ])
 }
 
-pub fn matrix4() -> soap::Matrix4<f64> {
+pub fn matrix4() -> tensr::Matrix4<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Matrix4::new([
+    tensr::Matrix4::new([
         [rng.gen(), rng.gen(), rng.gen(), rng.gen()],
         [rng.gen(), rng.gen(), rng.gen(), rng.gen()],
         [rng.gen(), rng.gen(), rng.gen(), rng.gen()],
@@ -90,17 +90,17 @@ pub fn matrix4() -> soap::Matrix4<f64> {
     ])
 }
 
-pub fn vector2() -> soap::Vector2<f64> {
+pub fn vector2() -> tensr::Vector2<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Vector2::new([rng.gen(), rng.gen()])
+    tensr::Vector2::new([rng.gen(), rng.gen()])
 }
 
-pub fn vector3() -> soap::Vector3<f64> {
+pub fn vector3() -> tensr::Vector3<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Vector3::new([rng.gen(), rng.gen(), rng.gen()])
+    tensr::Vector3::new([rng.gen(), rng.gen(), rng.gen()])
 }
 
-pub fn vector4() -> soap::Vector4<f64> {
+pub fn vector4() -> tensr::Vector4<f64> {
     let mut rng = IsaacRng::from_entropy();
-    soap::Vector4::new([rng.gen(), rng.gen(), rng.gen(), rng.gen()])
+    tensr::Vector4::new([rng.gen(), rng.gen(), rng.gen(), rng.gen()])
 }

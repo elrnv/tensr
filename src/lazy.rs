@@ -536,6 +536,7 @@ impl<T: Scalar + ExprSize> ExprSize for Tensor<T> {
     }
 }
 impl<T: Scalar + TotalExprSize> TotalExprSize for Tensor<T> {
+    #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
         Some(1)
     }
@@ -549,6 +550,7 @@ impl<E, F> ExprSize for Reduce<E, F> {
     }
 }
 impl<E: Iterator + Expression, F> TotalExprSize for Reduce<E, F> {
+    #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         Some(
             self.expr
@@ -579,6 +581,7 @@ impl<'a, T> ExprSize for SliceIterExpr<'a, T> {
     }
 }
 impl<'a, T> TotalExprSize for SliceIterExpr<'a, T> {
+    #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
         Some(self.0.size_hint().1.unwrap_or(self.0.size_hint().0))
     }
@@ -604,6 +607,7 @@ impl<T> ExprSize for VecIterExpr<T> {
     }
 }
 impl<T> TotalExprSize for VecIterExpr<T> {
+    #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
         Some(self.0.size_hint().1.unwrap_or(self.0.size_hint().0))
     }
@@ -646,6 +650,7 @@ impl<S: Set, N> TotalExprSize for UniChunkedIterExpr<S, N>
 where
     Self: BaseExprTotalSizeHint,
 {
+    #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         self.base_total_size_hint(cwise_reduce)
     }
@@ -823,6 +828,7 @@ impl<'a, S: Set> TotalExprSize for SubsetIterExpr<'a, S>
 where
     Self: BaseExprTotalSizeHint,
 {
+    #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         self.base_total_size_hint(cwise_reduce)
     }
@@ -1588,6 +1594,7 @@ impl<E> ExprSize for Repeat<E> {
     }
 }
 impl<E> TotalExprSize for Repeat<E> {
+    #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
         None
     }
@@ -1620,6 +1627,7 @@ impl<E: ExprSize, F: Reduction> ExprSize for CwiseUnExpr<E, F> {
     }
 }
 impl<E: TotalExprSize, F: Reduction> TotalExprSize for CwiseUnExpr<E, F> {
+    #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         self.expr.total_size_hint((cwise_reduce << 1) | 1)
     }
@@ -1632,6 +1640,7 @@ impl<E: ExprSize> ExprSize for CwiseUnExpr<E, Negation> {
     }
 }
 impl<E: TotalExprSize> TotalExprSize for CwiseUnExpr<E, Negation> {
+    #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         self.expr.total_size_hint(cwise_reduce)
     }
@@ -2365,50 +2374,25 @@ mod tests {
         assert_eq!(res, Chunked3::from_flat(vec![0, 0, 0, 3, 3, 3]));
     }
 
-    //#[test]
-    //fn tensor_tensor_mul() {
-    //    //let flat_a = ChunkedN::from_flat_with_stride(vec![1,2,5,6, 3,4,7,8, 9,10,13,14, 11,12,15,16], 4);
-    //    // 2x2 Block matrix of 2x2 blocks
-    //    let a = ChunkedN::from_flat_with_stride(
-    //        Chunked2::from_flat(Chunked2::from_flat(vec![
-    //            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    //        ])),
-    //        2,
-    //    );
-
-    //    let out: ChunkedN<_> = Evaluate::eval(a.expr() * a.expr());
-    //    assert_eq!(
-    //        ChunkedN::from_flat_with_stride(
-    //            Chunked2::from_flat(Chunked2::from_flat(vec![
-    //                118, 132, 166, 188, 174, 188, 254, 276, 310, 356, 358, 412, 494, 540, 574, 628
-    //            ])),
-    //            2
-    //        ),
-    //        out
-    //    );
-    //}
+    #[test]
+    fn tensor_tensor_mul() {
+    }
 
     #[test]
     fn sparse_matrix_vector_mul() {
         // Variable length rows with one empty:
         // [1 0]
         // [0 0]
-        //let a = Chunked::from_sizes(vec![1, 0], Sparse::from_dim(vec![0], 2, vec![1]));
-        //let b = vec![1, 2];
-        //let mut out = a.expr() * b.expr();
-        //dbg!(&out);
-        //let next = out.next().unwrap();
-        //dbg!(&next);
-        //let mut next = out.next().unwrap();
-        //dbg!(&next);
-        //let out: Vec<i32> = (a.expr() * b.expr()).eval();
-        //assert_eq!(vec![1, 0], out);
+        let a = Chunked::from_sizes(vec![1, 0], Sparse::from_dim(vec![0], 2, vec![1]));
+        let b = vec![1, 2];
+        let out: Vec<i32> = (a.expr() * b.expr()).eval();
+        assert_eq!(vec![1, 0], out);
 
-        //// Empty sparse matrix
-        //let a = Chunked::from_offsets(vec![0], Sparse::from_dim(Vec::new(), 1, Vec::<i32>::new()));
-        //let b = vec![2];
-        //let out: Vec<i32> = (a.expr() * b.expr()).eval();
-        //assert_eq!(vec![0], out);
+        //// Empty sparse matrix with 1 row
+        let a = Chunked::from_offsets(vec![0, 0], Sparse::from_dim(Vec::new(), 1, Vec::<i32>::new()));
+        let b = vec![2];
+        let out: Vec<i32> = (a.expr() * b.expr()).eval();
+        assert_eq!(vec![0], out);
 
         // Sparse matrix with 2 entries in each row, there are 2 rows and 4 columns.
         let a = ChunkedN::from_flat_with_stride(

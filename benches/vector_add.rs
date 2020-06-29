@@ -12,45 +12,37 @@ pub fn random_vec(n: usize) -> Vec<f64> {
     (0..n).map(move |_| rng.sample(range)).collect()
 }
 
-pub fn lazy_expr(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
+pub fn lazy_expr(a: &[f64], b: &[f64]) -> Vec<f64> {
     (a.expr() + b.expr()).eval()
 }
 
-pub fn manual(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
-    let mut out = Vec::with_capacity(a.view().into_storage().len());
-    for (a, b) in a.iter().zip(b.iter()) {
-        for (a, b) in a.iter().zip(b.iter()) {
-            out.push(a + b);
-        }
-    }
-    ChunkedN::from_flat_with_stride(out, a.len())
+pub fn manual(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let mut out = Vec::with_capacity(a.len());
+    out.extend(a.iter().zip(b.iter()).map(|(a, b)| a + b));
+    out
 }
 
-pub fn manual_init(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
-    let mut out = ChunkedN::from_flat_with_stride(vec![0.0; a.view().into_storage().len()], a.len());
+pub fn manual_init(a: &[f64], b: &[f64]) -> Vec<f64> {
+    let mut out = vec![0.0; a.len()];
     for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
-        for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
-            *out = a + b;
-        }
+        *out = a + b;
     }
     out
 }
 
-pub fn manual_assign(mut a: ChunkedN<Vec<f64>>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
+pub fn manual_assign(mut a: Vec<f64>, b: &[f64]) -> Vec<f64> {
     for (a, b) in a.iter_mut().zip(b.iter()) {
-        for (a, b) in a.iter_mut().zip(b.iter()) {
-            *a += b;
-        }
+        *a += b;
     }
     a
 }
 
-fn matrix_matrix_add_benchmark(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Matrix Matrix Add");
+fn vector_vector_add_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Vector Vector Add");
 
-    for &n in &[100, 250, 500, 750, 1000, 2500, 5000] {
-        let a = ChunkedN::from_flat_with_stride(random_vec(n * n), n);
-        let b = ChunkedN::from_flat_with_stride(random_vec(n * n), n);
+    for &n in &[10000, 50000, 100000, 150000] {
+        let a = random_vec(n);
+        let b = random_vec(n);
 
         group.bench_with_input(
             BenchmarkId::new("Lazy Expr", n),
@@ -59,7 +51,7 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
                 bench.iter_batched(
                     || (a.view(), b.view()),
                     |(a, b)| lazy_expr(a, b),
-                    BatchSize::LargeInput,
+                    BatchSize::SmallInput,
                 )
             },
         );
@@ -67,7 +59,7 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
             bench.iter_batched(
                 || (a.view(), b.view()),
                 |(a, b)| manual(a, b),
-                BatchSize::LargeInput,
+                BatchSize::SmallInput,
             )
         });
         group.bench_with_input(
@@ -77,7 +69,7 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
                 bench.iter_batched(
                     || (a.view(), b.view()),
                     |(a, b)| manual_init(a, b),
-                    BatchSize::LargeInput,
+                    BatchSize::SmallInput,
                 )
             },
         );
@@ -88,7 +80,7 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
                 bench.iter_batched(
                     || ((*a).clone(), b.view()),
                     |(a, b)| manual_assign(a, b),
-                    BatchSize::LargeInput,
+                    BatchSize::SmallInput,
                 )
             },
         );
@@ -97,9 +89,5 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(
-    name = benches;
-    config = Criterion::default().sample_size(15);
-    targets = matrix_matrix_add_benchmark
-);
+criterion_group!(benches, vector_vector_add_benchmark);
 criterion_main!(benches);

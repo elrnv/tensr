@@ -6,6 +6,7 @@ pub struct Enumerate<I> {
     pub(crate) count: usize,
 }
 impl<I> Enumerate<I> {
+    #[inline]
     pub fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
@@ -138,6 +139,7 @@ impl<I> ExactSizeIterator for Enumerate<I>
 where
     I: ExactSizeIterator,
 {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }

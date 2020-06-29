@@ -66,3 +66,6 @@ harness = false
 [[bench]]
 name = "matrix_add"
 harness = false
+[[bench]]
+name = "vector_add"
+harness = false

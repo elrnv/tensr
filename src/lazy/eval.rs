@@ -116,16 +116,20 @@ impl<I: Iterator, S> Evaluate<I> for ChunkedN<S>
 where
     S: Set + Default + EvalExtend<I::Item>,
 {
-    fn eval(iter: I) -> Self {
+    fn eval(mut iter: I) -> Self {
         let mut data = S::default();
-        let mut chunk_size = None;
-        for elem in iter {
-            let orig_len = data.len();
-            data.eval_extend(elem);
-            if chunk_size.is_none() {
-                chunk_size = Some(data.len());
-            } else {
+        data.eval_extend(iter.next().expect("Given expression is empty"));
+        let chunk_size = Some(data.len());
+
+        if cfg!(debug_assertions) {
+            for elem in iter {
+                let orig_len = data.len();
+                data.eval_extend(elem);
                 debug_assert_eq!(Some(data.len() - orig_len), chunk_size);
+            }
+        } else {
+            for elem in iter {
+                data.eval_extend(elem);
             }
         }
         UniChunked::from_flat_with_stride(data, chunk_size.unwrap())
@@ -363,9 +367,7 @@ where
 {
     #[inline]
     fn eval_extend(&mut self, iter: I) {
-        for i in iter {
-            self.push(Evaluate::eval(i));
-        }
+        self.extend(iter.map(|i| Evaluate::eval(i)));
     }
 }
 

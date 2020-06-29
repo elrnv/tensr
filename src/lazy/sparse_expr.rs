@@ -15,6 +15,7 @@ where
 }
 
 impl<I: Iterator> SparseExpr<I> {
+    #[inline]
     pub fn new(expr: I) -> SparseExpr<I> {
         SparseExpr { expr, peeked: None }
     }
