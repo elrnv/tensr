@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "unstable", feature(specialization))]
 //! 
 //! A prototype for a linear algebra library that aims at supporting:
 //!  - Multi-demensional array ("tensor") arithmetic (including scalars, vectors, matrices and higher dimensional structures),
@@ -875,6 +876,11 @@ where
     usize: IsolateIndex<S>,
 {
     type Output = Tensor<<usize as IsolateIndex<S>>::Output>;
+    #[inline]
+    unsafe fn isolate_unchecked(self, tensor: Tensor<S>) -> Self::Output {
+        Tensor { data: tensor.data.isolate_unchecked(self) }
+    }
+    #[inline]
     fn try_isolate(self, tensor: Tensor<S>) -> Option<Self::Output> {
         tensor.data.try_isolate(self).map(|data| Tensor { data })
     }
@@ -885,6 +891,11 @@ where
     std::ops::Range<usize>: IsolateIndex<S>,
 {
     type Output = Tensor<<std::ops::Range<usize> as IsolateIndex<S>>::Output>;
+    #[inline]
+    unsafe fn isolate_unchecked(self, tensor: Tensor<S>) -> Self::Output {
+        Tensor { data: tensor.data.isolate_unchecked(self) }
+    }
+    #[inline]
     fn try_isolate(self, tensor: Tensor<S>) -> Option<Self::Output> {
         tensor.data.try_isolate(self).map(|data| Tensor { data })
     }

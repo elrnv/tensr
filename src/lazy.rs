@@ -10,6 +10,8 @@ use std::ops::Neg as NegOp;
 use std::ops::Sub as SubOp;
 use std::ops::SubAssign as SubAssignOp;
 
+use flatk::TrustedRandomAccess;
+
 mod cwise_bin_expr;
 mod enumerate;
 mod eval;
@@ -587,6 +589,12 @@ impl<'a, T> TotalExprSize for SliceIterExpr<'a, T> {
     }
 }
 
+unsafe impl<'a, T: Clone + IntoExpr> TrustedRandomAccess for SliceIterExpr<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        self.0.as_slice().get_unchecked(i).clone().into_expr()
+    }
+}
+
 impl<'a, T: IntoExpr> Iterator for VecIterExpr<T> {
     type Item = T::Expr;
     #[inline]
@@ -658,6 +666,18 @@ where
 
 impl<S, N> ExactSizeIterator for UniChunkedIterExpr<S, N> where Self: Iterator {}
 
+unsafe impl<S, N> TrustedRandomAccess for UniChunkedIterExpr<S, U<N>>
+where Self: ExactSizeIterator,
+      S: Clone + Isolate<flatk::StaticRange<N>>,
+      <S as Isolate<flatk::StaticRange<N>>>::Output: IntoExpr<Expr = Self::Item>,
+      N: Unsigned,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        self.data.clone().isolate_unchecked(flatk::StaticRange::new(N::to_usize() * i)).into_expr()
+    }
+}
+
+
 impl<'a, S> Iterator for ChunkedNIterExpr<S>
 where
     S: Set + SplitAt + Dummy + IntoExpr,
@@ -679,6 +699,16 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         let n = self.data.len() / self.chunk_size;
         (n, Some(n))
+    }
+}
+
+unsafe impl<S> TrustedRandomAccess for ChunkedNIterExpr<S>
+where Self: ExactSizeIterator,
+      S: Clone + Isolate<std::ops::Range<usize>>,
+      <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        self.data.clone().isolate_unchecked(self.chunk_size*i..self.chunk_size*(i+1)).into_expr()
     }
 }
 
@@ -720,6 +750,19 @@ where
     }
 }
 impl<'a, S> ExactSizeIterator for ChunkedIterExpr<'a, S> where Self: Iterator {}
+
+unsafe impl<'a, S> TrustedRandomAccess for ChunkedIterExpr<'a, S>
+where Self: ExactSizeIterator,
+      S: Clone + Isolate<std::ops::Range<usize>>,
+      <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
+{
+    #[inline]
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        let begin = self.chunk_sizes.get_offset_value_unchecked(i); 
+        let end = self.chunk_sizes.get_offset_value_unchecked(i+1); 
+        self.data.clone().isolate_unchecked(begin..end).into_expr()
+    }
+}
 
 impl<'a, S, T> Iterator for SparseIterExpr<'a, S, T>
 where
@@ -831,6 +874,16 @@ where
     #[inline]
     fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
         self.base_total_size_hint(cwise_reduce)
+    }
+}
+
+unsafe impl<'a, S> TrustedRandomAccess for SubsetIterExpr<'a, S>
+where Self: ExactSizeIterator,
+      S: for<'b> Get<'b, usize, Output = Self::Item>,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        // TODO: Implement unchecked getter here
+        self.data.at(i)
     }
 }
 

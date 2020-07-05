@@ -16,6 +16,11 @@ pub fn lazy_expr(a: &[f64], b: &[f64]) -> Vec<f64> {
     (a.expr() + b.expr()).eval()
 }
 
+pub fn lazy_expr_assign(mut a: Vec<f64>, b: &[f64]) -> Vec<f64> {
+    *&mut a.expr_mut() += b.expr();
+    a
+}
+
 pub fn manual(a: &[f64], b: &[f64]) -> Vec<f64> {
     let mut out = Vec::with_capacity(a.len());
     out.extend(a.iter().zip(b.iter()).map(|(a, b)| a + b));
@@ -69,6 +74,18 @@ fn vector_vector_add_benchmark(c: &mut Criterion) {
                 bench.iter_batched(
                     || (a.view(), b.view()),
                     |(a, b)| manual_init(a, b),
+                    BatchSize::SmallInput,
+                )
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("Lazy Expr Assign", n),
+            &(&a, &b),
+            |bench, (a, b)| {
+                bench.iter_batched(
+                    || ((*a).clone(), b.view()),
+                    |(a, b)| lazy_expr_assign(a, b),
                     BatchSize::SmallInput,
                 )
             },

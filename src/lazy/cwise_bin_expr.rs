@@ -6,20 +6,9 @@ pub struct CwiseBinExpr<L, R, F> {
     pub(crate) left: L,
     pub(crate) right: R,
     pub(crate) op: F,
-}
-
-impl<L, R, F: Default> CwiseBinExpr<L, R, F> {
-    #[inline]
-    pub fn new(left: L, right: R) -> Self {
-        Self::with_op(left, right, Default::default())
-    }
-}
-
-impl<L, R, F> CwiseBinExpr<L, R, F> {
-    #[inline]
-    pub fn with_op(left: L, right: R, op: F) -> Self {
-        CwiseBinExpr { left, right, op }
-    }
+    // For specialized CwiseBinExpr
+    index: usize,
+    len: usize,
 }
 
 /// A lazy `Add` expression to be evaluated at a later time.
@@ -30,6 +19,42 @@ pub type SubExpr<L, R> = CwiseBinExpr<L, R, Subtraction>;
 
 /// A lazy component-wise multiply expression to be evaluated at a later time.
 pub type CwiseMulExpr<L, R> = CwiseBinExpr<L, R, CwiseMultiplication>;
+
+impl<L, R, F: Default> CwiseBinExpr<L, R, F>
+where Self: CwiseBinExprImpl<L, R, F>
+{
+    #[inline]
+    pub fn new(left: L, right: R) -> Self {
+        Self::with_op(left, right, Default::default())
+    }
+}
+
+pub trait CwiseBinExprImpl<L, R, F> {
+    fn with_op(left: L, right: R, op: F) -> Self;
+}
+
+impl<L, R, F> CwiseBinExprImpl<L, R, F> for CwiseBinExpr<L, R, F> {
+    #[cfg(feature = "unstable")]
+    #[inline]
+    default fn with_op(left: L, right: R, op: F) -> Self {
+        CwiseBinExpr { left, right, op, index: 0, len: 0 }
+    }
+    #[cfg(not(feature = "unstable"))]
+    #[inline]
+    fn with_op(left: L, right: R, op: F) -> Self {
+        CwiseBinExpr { left, right, op, index: 0, len: 0 }
+    }
+}
+
+#[cfg(feature = "unstable")]
+impl<L: TrustedRandomAccess, R: TrustedRandomAccess, F> CwiseBinExprImpl<L, R, F> for CwiseBinExpr<L, R, F> {
+    #[inline]
+    fn with_op(left: L, right: R, op: F) -> Self {
+        let len = left.len().min(right.len());
+        CwiseBinExpr { left, right, op, index: 0, len }
+    }
+}
+
 
 /*
  * CwiseBinExpr impls
@@ -124,6 +149,27 @@ where
     R: Iterator + DenseExpr,
 {
     type Item = Out;
+    #[cfg(feature = "unstable")]
+    #[inline]
+    default fn next(&mut self) -> Option<Self::Item> {
+        // TODO: optimize this function, see std::iter::Zip for reference.
+        let l = self.left.next()?;
+        let r = self.right.next()?;
+        Some(self.op.apply(l, r))
+    }
+
+    #[cfg(feature = "unstable")]
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let left = self.left.size_hint();
+        let right = self.right.size_hint();
+        (
+            left.0.min(right.0),
+            left.1.and_then(|l| right.1.map(|r| l.max(r))),
+        )
+    }
+
+    #[cfg(not(feature = "unstable"))]
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         // TODO: optimize this function, see std::iter::Zip for reference.
@@ -132,6 +178,7 @@ where
         Some(self.op.apply(l, r))
     }
 
+    #[cfg(not(feature = "unstable"))]
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let left = self.left.size_hint();
@@ -140,6 +187,25 @@ where
             left.0.min(right.0),
             left.1.and_then(|l| right.1.map(|r| l.max(r))),
         )
+    }
+}
+
+#[cfg(feature = "unstable")]
+impl<L, R, F, Out> Iterator for CwiseBinExpr<L, R, F>
+where
+    F: BinOp<L::Item, R::Item, Output = Out>,
+    L: Iterator + DenseExpr + TrustedRandomAccess,
+    R: Iterator + DenseExpr + TrustedRandomAccess,
+{
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.len {
+            let i = self.index;
+            self.index += 1;
+            unsafe { Some(self.op.apply(self.left.get_unchecked(i), self.right.get_unchecked(i))) }
+        } else {
+            None
+        }
     }
 }
 
