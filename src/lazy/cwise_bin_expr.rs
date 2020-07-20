@@ -21,7 +21,8 @@ pub type SubExpr<L, R> = CwiseBinExpr<L, R, Subtraction>;
 pub type CwiseMulExpr<L, R> = CwiseBinExpr<L, R, CwiseMultiplication>;
 
 impl<L, R, F: Default> CwiseBinExpr<L, R, F>
-where Self: CwiseBinExprImpl<L, R, F>
+where
+    Self: CwiseBinExprImpl<L, R, F>,
 {
     #[inline]
     pub fn new(left: L, right: R) -> Self {
@@ -37,24 +38,43 @@ impl<L, R, F> CwiseBinExprImpl<L, R, F> for CwiseBinExpr<L, R, F> {
     #[cfg(feature = "unstable")]
     #[inline]
     default fn with_op(left: L, right: R, op: F) -> Self {
-        CwiseBinExpr { left, right, op, index: 0, len: 0 }
+        CwiseBinExpr {
+            left,
+            right,
+            op,
+            index: 0,
+            len: 0,
+        }
     }
     #[cfg(not(feature = "unstable"))]
     #[inline]
     fn with_op(left: L, right: R, op: F) -> Self {
-        CwiseBinExpr { left, right, op, index: 0, len: 0 }
+        CwiseBinExpr {
+            left,
+            right,
+            op,
+            index: 0,
+            len: 0,
+        }
     }
 }
 
 #[cfg(feature = "unstable")]
-impl<L: TrustedRandomAccess, R: TrustedRandomAccess, F> CwiseBinExprImpl<L, R, F> for CwiseBinExpr<L, R, F> {
+impl<L: TrustedRandomAccess, R: TrustedRandomAccess, F> CwiseBinExprImpl<L, R, F>
+    for CwiseBinExpr<L, R, F>
+{
     #[inline]
     fn with_op(left: L, right: R, op: F) -> Self {
         let len = left.len().min(right.len());
-        CwiseBinExpr { left, right, op, index: 0, len }
+        CwiseBinExpr {
+            left,
+            right,
+            op,
+            index: 0,
+            len,
+        }
     }
 }
-
 
 /*
  * CwiseBinExpr impls
@@ -202,7 +222,12 @@ where
         if self.index < self.len {
             let i = self.index;
             self.index += 1;
-            unsafe { Some(self.op.apply(self.left.get_unchecked(i), self.right.get_unchecked(i))) }
+            unsafe {
+                Some(
+                    self.op
+                        .apply(self.left.get_unchecked(i), self.right.get_unchecked(i)),
+                )
+            }
         } else {
             None
         }

@@ -124,7 +124,7 @@ pub type DSMatrixBase<T, I> = Tensor<Chunked<Tensor<Sparse<T, Dim, I>>, Offsets<
 pub type DSMatrix<T = f64, I = Vec<usize>> = DSMatrixBase<Tensor<Vec<T>>, I>;
 pub type DSMatrixView<'a, T = f64> = DSMatrixBase<&'a Tensor<[T]>, &'a [usize]>;
 
-impl<S: IntoData, I: Set> Matrix for DSMatrixBase<S, I>
+impl<S: IntoData, I: AsRef<[usize]>> Matrix for DSMatrixBase<S, I>
 where
     S::Data: Set,
 {

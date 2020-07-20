@@ -667,16 +667,19 @@ where
 impl<S, N> ExactSizeIterator for UniChunkedIterExpr<S, N> where Self: Iterator {}
 
 unsafe impl<S, N> TrustedRandomAccess for UniChunkedIterExpr<S, U<N>>
-where Self: ExactSizeIterator,
-      S: Clone + Isolate<flatk::StaticRange<N>>,
-      <S as Isolate<flatk::StaticRange<N>>>::Output: IntoExpr<Expr = Self::Item>,
-      N: Unsigned,
+where
+    Self: ExactSizeIterator,
+    S: Clone + Isolate<flatk::StaticRange<N>>,
+    <S as Isolate<flatk::StaticRange<N>>>::Output: IntoExpr<Expr = Self::Item>,
+    N: Unsigned,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        self.data.clone().isolate_unchecked(flatk::StaticRange::new(N::to_usize() * i)).into_expr()
+        self.data
+            .clone()
+            .isolate_unchecked(flatk::StaticRange::new(N::to_usize() * i))
+            .into_expr()
     }
 }
-
 
 impl<'a, S> Iterator for ChunkedNIterExpr<S>
 where
@@ -703,12 +706,16 @@ where
 }
 
 unsafe impl<S> TrustedRandomAccess for ChunkedNIterExpr<S>
-where Self: ExactSizeIterator,
-      S: Clone + Isolate<std::ops::Range<usize>>,
-      <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
+where
+    Self: ExactSizeIterator,
+    S: Clone + Isolate<std::ops::Range<usize>>,
+    <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        self.data.clone().isolate_unchecked(self.chunk_size*i..self.chunk_size*(i+1)).into_expr()
+        self.data
+            .clone()
+            .isolate_unchecked(self.chunk_size * i..self.chunk_size * (i + 1))
+            .into_expr()
     }
 }
 
@@ -752,14 +759,15 @@ where
 impl<'a, S> ExactSizeIterator for ChunkedIterExpr<'a, S> where Self: Iterator {}
 
 unsafe impl<'a, S> TrustedRandomAccess for ChunkedIterExpr<'a, S>
-where Self: ExactSizeIterator,
-      S: Clone + Isolate<std::ops::Range<usize>>,
-      <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
+where
+    Self: ExactSizeIterator,
+    S: Clone + Isolate<std::ops::Range<usize>>,
+    <S as Isolate<std::ops::Range<usize>>>::Output: IntoExpr<Expr = Self::Item>,
 {
     #[inline]
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        let begin = self.chunk_sizes.get_offset_value_unchecked(i); 
-        let end = self.chunk_sizes.get_offset_value_unchecked(i+1); 
+        let begin = self.chunk_sizes.offset_value_unchecked(i);
+        let end = self.chunk_sizes.offset_value_unchecked(i + 1);
         self.data.clone().isolate_unchecked(begin..end).into_expr()
     }
 }
@@ -878,8 +886,9 @@ where
 }
 
 unsafe impl<'a, S> TrustedRandomAccess for SubsetIterExpr<'a, S>
-where Self: ExactSizeIterator,
-      S: for<'b> Get<'b, usize, Output = Self::Item>,
+where
+    Self: ExactSizeIterator,
+    S: for<'b> Get<'b, usize, Output = Self::Item>,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
         // TODO: Implement unchecked getter here
@@ -2420,16 +2429,15 @@ mod tests {
 
     #[test]
     fn subtract_different_types() {
-        let a: Subset<_, Vec<usize>>  = Subset::all(Chunked3::from_flat(vec![1,2,3,4,5,6]));
-        let b = vec![Vector3::new([1,2,3]); 2];
+        let a: Subset<_, Vec<usize>> = Subset::all(Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6]));
+        let b = vec![Vector3::new([1, 2, 3]); 2];
 
         let res: Chunked3<Vec<u64>> = (a.expr() - b.expr()).eval();
         assert_eq!(res, Chunked3::from_flat(vec![0, 0, 0, 3, 3, 3]));
     }
 
     #[test]
-    fn tensor_tensor_mul() {
-    }
+    fn tensor_tensor_mul() {}
 
     #[test]
     fn sparse_matrix_vector_mul() {
@@ -2442,7 +2450,10 @@ mod tests {
         assert_eq!(vec![1, 0], out);
 
         //// Empty sparse matrix with 1 row
-        let a = Chunked::from_offsets(vec![0, 0], Sparse::from_dim(Vec::new(), 1, Vec::<i32>::new()));
+        let a = Chunked::from_offsets(
+            vec![0, 0],
+            Sparse::from_dim(Vec::new(), 1, Vec::<i32>::new()),
+        );
         let b = vec![2];
         let out: Vec<i32> = (a.expr() * b.expr()).eval();
         assert_eq!(vec![0], out);

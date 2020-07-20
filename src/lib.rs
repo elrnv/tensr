@@ -1,5 +1,5 @@
 #![cfg_attr(feature = "unstable", feature(specialization))]
-//! 
+//!
 //! A prototype for a linear algebra library that aims at supporting:
 //!  - Multi-demensional array ("tensor") arithmetic (including scalars, vectors, matrices and higher dimensional structures),
 //!  - Small (array based) tensors,
@@ -10,7 +10,7 @@
 //!  - Special matrices (block diagonal, lower triangular, upper triangular, etc.),
 //!  - Flat data layout in all tensor types for faster processing,
 //!  - Arithmetic between compatible tensors.
-//! 
+//!
 //! The goals of this library (in no particular order) are
 //!  - performance
 //!  - simplicity (usage as well as implementation)
@@ -21,13 +21,13 @@ mod array_math;
 mod lazy;
 mod matrix;
 
+use std::fmt;
 use std::num::FpCategory;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
-use std::fmt;
 
-use num_traits::{NumAssignOps, NumOps, Float, One, Zero};
+use num_traits::{Float, NumAssignOps, NumOps, One, Zero};
 use typenum::Unsigned;
 use unroll::unroll_for_loops;
 
@@ -878,7 +878,9 @@ where
     type Output = Tensor<<usize as IsolateIndex<S>>::Output>;
     #[inline]
     unsafe fn isolate_unchecked(self, tensor: Tensor<S>) -> Self::Output {
-        Tensor { data: tensor.data.isolate_unchecked(self) }
+        Tensor {
+            data: tensor.data.isolate_unchecked(self),
+        }
     }
     #[inline]
     fn try_isolate(self, tensor: Tensor<S>) -> Option<Self::Output> {
@@ -893,7 +895,9 @@ where
     type Output = Tensor<<std::ops::Range<usize> as IsolateIndex<S>>::Output>;
     #[inline]
     unsafe fn isolate_unchecked(self, tensor: Tensor<S>) -> Self::Output {
-        Tensor { data: tensor.data.isolate_unchecked(self) }
+        Tensor {
+            data: tensor.data.isolate_unchecked(self),
+        }
     }
     #[inline]
     fn try_isolate(self, tensor: Tensor<S>) -> Option<Self::Output> {
@@ -1552,8 +1556,8 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
-    use autodiff::F;
     use super::*;
+    use autodiff::F;
     impl NonTensor for F {}
     impl Scalar for F {}
     impl Flat for F {}

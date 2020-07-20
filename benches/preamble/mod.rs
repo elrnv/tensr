@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 pub use cgmath::prelude::*;
+pub use flatk::*;
 pub use rand::{FromEntropy, IsaacRng, Rng};
 pub use std::ops::Mul;
-pub use flatk::*;
 pub use tensr::{Expr, IntoData, Matrix};
 
 // Cgmath

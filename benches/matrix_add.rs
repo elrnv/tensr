@@ -27,7 +27,8 @@ pub fn manual(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
 }
 
 pub fn manual_init(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
-    let mut out = ChunkedN::from_flat_with_stride(vec![0.0; a.view().into_storage().len()], a.len());
+    let mut out =
+        ChunkedN::from_flat_with_stride(vec![0.0; a.view().into_storage().len()], a.len());
     for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
         for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
             *out = a + b;

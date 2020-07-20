@@ -982,14 +982,15 @@ macro_rules! impl_array_matrices {
             /// If the given function is multiplication, then the result is an outer product.
             #[inline]
             #[unroll_for_loops]
-            pub fn from_cartesian<A, B, F>(a: Tensor<[A; $r]>, b: Tensor<[B; $c]>, mut f: F) -> Self 
+            pub fn from_cartesian<A, B, F>(a: Tensor<[A; $r]>, b: Tensor<[B; $c]>, mut f: F) -> Self
             where
                 A: Copy,
                 B: Copy,
                 F: FnMut(A, B) -> T,
             {
                 // We use MaybeUninit here mostly to avoid a Zero trait bound.
-                let mut out: [[MaybeUninit<T>; $c]; $r] = unsafe { MaybeUninit::uninit().assume_init() };
+                let mut out: [[MaybeUninit<T>; $c]; $r] =
+                    unsafe { MaybeUninit::uninit().assume_init() };
                 for i in 0..$r {
                     for j in 0..$c {
                         out[i][j] = MaybeUninit::new(f(a.data[i], b.data[j]));
