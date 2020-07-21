@@ -127,6 +127,12 @@ impl<U: ?Sized, T: ?Sized + PartialEq<U>> PartialEq<Tensor<U>> for Tensor<T> {
     }
 }
 
+// SAFETY: Tensor is transparent, which makes this impl safe for T: bytemuck::Pod types.
+unsafe impl<T: bytemuck::Pod> bytemuck::Pod for Tensor<T> {}
+
+// SAFETY: Tensor is transparent, which makes this impl safe for T: bytemuck::Zeroable types.
+unsafe impl<T: bytemuck::Zeroable> bytemuck::Zeroable for Tensor<T> {}
+
 // The following type aliases are useful for disambiguating between the `new` constructors without
 // having to spell out the entire type.
 pub type UTensor<S, N> = Tensor<UniChunked<S, N>>;
@@ -1117,8 +1123,8 @@ impl<S: IntoIterator> IntoIterator for Tensor<S> {
 
 /// Plain old data trait. Types that implement this trait contain no references and can be copied
 /// with `memcpy`.
-pub trait Pod: 'static + Copy + Sized + Send + Sync {}
-impl<T> Pod for T where T: 'static + Copy + Sized + Send + Sync {}
+pub trait Pod: 'static + Copy + Sized + Send + Sync + bytemuck::Pod {}
+impl<T> Pod for T where T: 'static + Copy + Sized + Send + Sync + bytemuck::Pod {}
 
 impl<T: Scalar> AsTensor for T {
     type Inner = T;

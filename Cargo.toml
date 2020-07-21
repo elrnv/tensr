@@ -15,6 +15,7 @@ keywords = ["tensor", "sparse", "lazy", "block", "linear algebra"]
 flatk = { git = "https://github.com/elrnv/flatk", features = ["rayon"] }
 rand = "0.5"
 reinterpret = "0.2"
+bytemuck = "1.2"
 sprs = { version = "0.6.4", optional = true }
 image = "0.22"
 unroll = "0.1"
