@@ -1563,43 +1563,43 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
     use super::*;
-    use autodiff::F;
-    impl NonTensor for F {}
-    impl Scalar for F {}
-    impl Flat for F {}
+    use autodiff::F1;
+    impl NonTensor for F1 {}
+    impl Scalar for F1 {}
+    impl Flat for F1 {}
     //impl Dummy for F {
     //    unsafe fn dummy() -> Self {
     //        Self::default()
     //    }
     //}
-    impl IntoTensor for F {
-        type Tensor = Tensor<F>;
+    impl IntoTensor for F1 {
+        type Tensor = Tensor<F1>;
         #[inline]
         fn into_tensor(self) -> Self::Tensor {
             Tensor { data: self }
         }
     }
 
-    impl IntoExpr for F {
-        type Expr = Tensor<F>;
+    impl IntoExpr for F1 {
+        type Expr = Tensor<F1>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: self }
         }
     }
 
-    impl IntoExpr for &F {
-        type Expr = Tensor<F>;
+    impl IntoExpr for &F1 {
+        type Expr = Tensor<F1>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: *self }
         }
     }
-    impl<'a> IntoExpr for &'a mut F {
-        type Expr = &'a mut Tensor<F>;
+    impl<'a> IntoExpr for &'a mut F1 {
+        type Expr = &'a mut Tensor<F1>;
         fn into_expr(self) -> Self::Expr {
             self.as_mut_tensor()
         }
     }
-    impl DotOp for F {
+    impl DotOp for F1 {
         type Output = Tensor<Self>;
         fn dot_op(self, rhs: Self) -> Self::Output {
             Tensor { data: self * rhs }
