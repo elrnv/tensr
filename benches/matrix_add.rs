@@ -6,7 +6,8 @@ use tensr::*;
 
 /// Generate a random vector of float values between -1 and 1.
 pub fn random_vec(n: usize) -> Vec<f64> {
-    use rand::{distributions::Uniform, Rng, SeedableRng, StdRng};
+    use rand::distributions::Uniform;
+    use rand::prelude::*;
     let mut rng: StdRng = SeedableRng::from_seed([3; 32]);
     let range = Uniform::new(-1.0, 1.0);
     (0..n).map(move |_| rng.sample(range)).collect()
