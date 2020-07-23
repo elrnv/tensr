@@ -257,7 +257,7 @@ macro_rules! impl_array_matrix_eval_traits {
         }
         impl<T: Scalar> EvalExtend<Tensor<[Tensor<[Tensor<T>; $c]>; $r]>> for Vec<T> {
             #[inline]
-            //#[unroll_for_loops]
+            #[unroll_for_loops]
             fn eval_extend(&mut self, value: Tensor<[Tensor<[Tensor<T>; $c]>; $r]>) {
                 for r in 0..$r {
                     for c in 0..$c {

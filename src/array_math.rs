@@ -135,6 +135,8 @@ macro_rules! impl_array_vectors {
         {
             type Output = T::Output;
             #[inline]
+            #[allow(unused_mut)]
+            #[unroll_for_loops]
             fn dot_op(self, rhs: Self) -> T::Output {
                 let mut prod = self.data[0].dot_op(rhs.data[0]);
                 for i in 1..$n {
@@ -392,7 +394,7 @@ macro_rules! impl_array_vectors {
             for Tensor<[T]>
         {
             #[inline]
-            //#[unroll_for_loops]
+            #[unroll_for_loops]
             fn cwise_mul_assign(&mut self, rhs: Tensor<[Tensor<T>; $n]>) {
                 debug_assert!(self.len() >= rhs.len());
                 for i in 0..$n {
@@ -639,6 +641,7 @@ macro_rules! impl_array_vectors {
         impl<S: Scalar, T: MulAssign<Tensor<S>>> Mul<Tensor<[T; $n]>> for Tensor<S> {
             type Output = Tensor<[T; $n]>;
             #[inline]
+            #[unroll_for_loops]
             fn mul(self, mut rhs: Tensor<[T; $n]>) -> Self::Output {
                 for i in 0..$n {
                     rhs.data[i] *= self;
