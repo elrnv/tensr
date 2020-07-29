@@ -273,123 +273,144 @@ pub trait AsMutData: AsData {
     fn as_mut_data(&mut self) -> &mut Self::Data;
 }
 
-impl<T: AsData + ?Sized> AsData for Tensor<T> {
-    type Data = T::Data;
-    #[inline]
-    fn as_data(&self) -> &Self::Data {
-        self.data.as_data()
-    }
-}
+//impl<T: AsData + ?Sized> AsData for Tensor<T> {
+//    type Data = T::Data;
+//    #[inline]
+//    fn as_data(&self) -> &Self::Data {
+//        self.data.as_data()
+//    }
+//}
+//
+//impl<T: AsMutData + ?Sized> AsMutData for Tensor<T> {
+//    #[inline]
+//    fn as_mut_data(&mut self) -> &mut Self::Data {
+//        self.data.as_mut_data()
+//    }
+//}
 
-impl<T: AsMutData + ?Sized> AsMutData for Tensor<T> {
-    #[inline]
-    fn as_mut_data(&mut self) -> &mut Self::Data {
-        self.data.as_mut_data()
-    }
-}
+/*
+ * Recursive cases for AsData and AsMutData
+ */
 
-impl<S: IntoData, N> AsData for UniChunked<S, N> {
+impl<S: IntoData, N> AsData for Tensor<UniChunked<S, N>> {
     type Data = UniChunked<S::Data, N>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        unsafe { &*(self as *const UniChunked<S, N> as *const UniChunked<S::Data, N>) }
+        unsafe { &*(self as *const Tensor<UniChunked<S, N>> as *const UniChunked<S::Data, N>) }
     }
 }
 
-impl<S: IntoData, N> AsMutData for UniChunked<S, N> {
+impl<S: IntoData, N> AsMutData for Tensor<UniChunked<S, N>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        unsafe { &mut *(self as *mut UniChunked<S, N> as *mut UniChunked<S::Data, N>) }
+        unsafe { &mut *(self as *mut Tensor<UniChunked<S, N>> as *mut UniChunked<S::Data, N>) }
     }
 }
 
-impl<S: IntoData, I> AsData for Chunked<S, I> {
+impl<S: IntoData, I> AsData for Tensor<Chunked<S, I>> {
     type Data = Chunked<S::Data, I>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        unsafe { &*(self as *const Chunked<S, I> as *const Chunked<S::Data, I>) }
+        unsafe { &*(self as *const Tensor<Chunked<S, I>> as *const Chunked<S::Data, I>) }
     }
 }
 
-impl<S: IntoData, I> AsMutData for Chunked<S, I> {
+impl<S: IntoData, I> AsMutData for Tensor<Chunked<S, I>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        unsafe { &mut *(self as *mut Chunked<S, I> as *mut Chunked<S::Data, I>) }
+        unsafe { &mut *(self as *mut Tensor<Chunked<S, I>> as *mut Chunked<S::Data, I>) }
     }
 }
 
-impl<S: IntoData, T, I> AsData for Sparse<S, T, I> {
+impl<S: IntoData, T, I> AsData for Tensor<Sparse<S, T, I>> {
     type Data = Sparse<S::Data, T, I>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        unsafe { &*(self as *const Sparse<S, T, I> as *const Sparse<S::Data, T, I>) }
+        unsafe { &*(self as *const Tensor<Sparse<S, T, I>> as *const Sparse<S::Data, T, I>) }
     }
 }
 
-impl<S: IntoData, T, I> AsMutData for Sparse<S, T, I> {
+impl<S: IntoData, T, I> AsMutData for Tensor<Sparse<S, T, I>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        unsafe { &mut *(self as *mut Sparse<S, T, I> as *mut Sparse<S::Data, T, I>) }
+        unsafe { &mut *(self as *mut Tensor<Sparse<S, T, I>> as *mut Sparse<S::Data, T, I>) }
     }
 }
 
-impl<S: IntoData, I> AsData for Subset<S, I> {
+impl<S: IntoData, I> AsData for Tensor<Subset<S, I>> {
     type Data = Subset<S::Data, I>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        unsafe { &*(self as *const Subset<S, I> as *const Subset<S::Data, I>) }
+        unsafe { &*(self as *const Tensor<Subset<S, I>> as *const Subset<S::Data, I>) }
     }
 }
 
-impl<S: IntoData, I> AsMutData for Subset<S, I> {
+impl<S: IntoData, I> AsMutData for Tensor<Subset<S, I>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        unsafe { &mut *(self as *mut Subset<S, I> as *mut Subset<S::Data, I>) }
+        unsafe { &mut *(self as *mut Tensor<Subset<S, I>> as *mut Subset<S::Data, I>) }
     }
 }
 
-impl<S: IntoData, I> AsData for Select<S, I> {
+impl<S: IntoData, I> AsData for Tensor<Select<S, I>> {
     type Data = Select<S::Data, I>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        unsafe { &*(self as *const Select<S, I> as *const Select<S::Data, I>) }
+        unsafe { &*(self as *const Tensor<Select<S, I>> as *const Select<S::Data, I>) }
     }
 }
 
-impl<S: IntoData, I> AsMutData for Select<S, I> {
+impl<S: IntoData, I> AsMutData for Tensor<Select<S, I>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        unsafe { &mut *(self as *mut Select<S, I> as *mut Select<S::Data, I>) }
+        unsafe { &mut *(self as *mut Tensor<Select<S, I>> as *mut Select<S::Data, I>) }
     }
 }
 
-impl<T> AsData for [T] {
+/*
+ * Base cases for AsData and AsMutData
+ */
+
+//impl<S: NonTensor> AsData for S {
+//    type Data = Self;
+//    fn as_data(&self) -> &Self::Data {
+//        self
+//    }
+//}
+//
+//impl<S: NonTensor> AsMutData for S {
+//    fn as_mut_data(&mut self) -> &mut Self::Data {
+//        self
+//    }
+//}
+
+impl<T> AsData for Tensor<[T]> {
     type Data = [T];
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        self
+        &self.data
     }
 }
 
-impl<T> AsMutData for [T] {
+impl<T> AsMutData for Tensor<[T]> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        self
+        &mut self.data
     }
 }
 
-impl<T> AsData for Vec<T> {
+impl<T> AsData for Tensor<Vec<T>> {
     type Data = Vec<T>;
     #[inline]
     fn as_data(&self) -> &Self::Data {
-        self
+        &self.data
     }
 }
 
-impl<T> AsMutData for Vec<T> {
+impl<T> AsMutData for Tensor<Vec<T>> {
     #[inline]
     fn as_mut_data(&mut self) -> &mut Self::Data {
-        self
+        &mut self.data
     }
 }
 
