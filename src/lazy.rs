@@ -12,13 +12,16 @@ use std::ops::SubAssign as SubAssignOp;
 
 use flatk::TrustedRandomAccess;
 
+mod constructors;
 mod cwise_bin_expr;
 mod enumerate;
 mod eval;
 mod expr_mut;
+mod index_notation;
 mod iterator;
 mod sparse_expr;
 mod target;
+pub use constructors::*;
 pub use cwise_bin_expr::*;
 pub use enumerate::Enumerate;
 pub use eval::{EvalExtend, Evaluate};
@@ -386,18 +389,22 @@ type Sum<E> = Reduce<E, Addition>;
 
 /// A wrapper around a cloned iterator over a slice.
 #[derive(Clone, Debug)]
-pub struct SliceIterExpr<'a, T>(std::slice::Iter<'a, T>);
-
-#[derive(Clone, Debug)]
-pub struct VecIterExpr<T>(std::vec::IntoIter<T>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct UniChunkedIterExpr<S, N> {
-    data: S,
-    chunk_size: N,
+pub struct SliceIterExpr<'a, T, I = ()> {
+    pub(crate) index: I,
+    pub(crate) iter: std::slice::Iter<'a, T>,
 }
 
-pub type ChunkedNIterExpr<S> = UniChunkedIterExpr<S, usize>;
+#[derive(Clone, Debug)]
+pub struct VecIterExpr<T>(pub(crate) std::vec::IntoIter<T>);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UniChunkedIterExpr<S, N, I = ()> {
+    pub(crate) index: I,
+    pub(crate) data: S,
+    pub(crate) chunk_size: N,
+}
+
+pub type ChunkedNIterExpr<S, I = ()> = UniChunkedIterExpr<S, usize, I>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChunkedIterExpr<'a, S> {
@@ -421,7 +428,7 @@ pub struct SubsetIterExpr<'a, S> {
 // Trait that indicates that an iterator produces elements from a dense or
 // contiguous collection as opposed to a sparse one.
 pub trait DenseExpr {}
-impl<'a, T> DenseExpr for SliceIterExpr<'a, T> {}
+impl<'a, T, I> DenseExpr for SliceIterExpr<'a, T, I> {}
 impl<T> DenseExpr for VecIterExpr<T> {}
 impl<S, N> DenseExpr for UniChunkedIterExpr<S, N> {}
 impl<'a, S> DenseExpr for ChunkedIterExpr<'a, S> {}
@@ -563,35 +570,35 @@ impl<E: Iterator + Expression, F> TotalExprSize for Reduce<E, F> {
     }
 }
 
-impl<'a, T: Clone + IntoExpr> Iterator for SliceIterExpr<'a, T> {
+impl<'a, T: Clone + IntoExpr, I> Iterator for SliceIterExpr<'a, T, I> {
     type Item = T::Expr;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|x| x.clone().into_expr())
+        self.iter.next().map(|x| x.clone().into_expr())
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        self.iter.size_hint()
     }
 }
-impl<'a, T> Expression for SliceIterExpr<'a, T> {}
-impl<'a, T: Clone + IntoExpr> ExactSizeIterator for SliceIterExpr<'a, T> {}
-impl<'a, T> ExprSize for SliceIterExpr<'a, T> {
+impl<'a, T, I> Expression for SliceIterExpr<'a, T, I> {}
+impl<'a, T: Clone + IntoExpr, I> ExactSizeIterator for SliceIterExpr<'a, T, I> {}
+impl<'a, T, I> ExprSize for SliceIterExpr<'a, T, I> {
     #[inline]
     fn expr_size(&self) -> usize {
-        self.0.size_hint().1.unwrap_or(self.0.size_hint().0)
+        self.iter.size_hint().1.unwrap_or(self.iter.size_hint().0)
     }
 }
-impl<'a, T> TotalExprSize for SliceIterExpr<'a, T> {
+impl<'a, T, I> TotalExprSize for SliceIterExpr<'a, T, I> {
     #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
-        Some(self.0.size_hint().1.unwrap_or(self.0.size_hint().0))
+        Some(self.iter.size_hint().1.unwrap_or(self.iter.size_hint().0))
     }
 }
 
-unsafe impl<'a, T: Clone + IntoExpr> TrustedRandomAccess for SliceIterExpr<'a, T> {
+unsafe impl<'a, T: Clone + IntoExpr, I> TrustedRandomAccess for SliceIterExpr<'a, T, I> {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        self.0.as_slice().get_unchecked(i).clone().into_expr()
+        self.iter.as_slice().get_unchecked(i).clone().into_expr()
     }
 }
 
@@ -1137,6 +1144,7 @@ impl<S: DynamicCollection, N> IntoExpr for UniChunked<S, N> {
     #[inline]
     fn into_expr(self) -> Self::Expr {
         UniChunkedIterExpr {
+            index: (),
             data: self.data,
             chunk_size: self.chunk_size,
         }
@@ -1179,7 +1187,7 @@ impl<'a, S> IntoExpr for SubsetView<'a, S> {
 }
 
 impl<'a, T: Clone> IntoExpr for &'a [T] {
-    type Expr = SliceIterExpr<'a, T>;
+    type Expr = SliceIterExpr<'a, T, ()>;
     #[inline]
     fn into_expr(self) -> Self::Expr {
         self.expr()
@@ -1208,10 +1216,13 @@ pub trait Expr<'a> {
 }
 
 impl<'a, T: 'a + Clone> Expr<'a> for [T] {
-    type Output = SliceIterExpr<'a, T>;
+    type Output = SliceIterExpr<'a, T, ()>;
     #[inline]
     fn expr(&'a self) -> Self::Output {
-        SliceIterExpr(self.iter())
+        SliceIterExpr {
+            index: (),
+            iter: self.iter(),
+        }
     }
 }
 
@@ -1219,7 +1230,10 @@ impl<'a, T: 'a + Clone> Expr<'a> for &'a [T] {
     type Output = SliceIterExpr<'a, T>;
     #[inline]
     fn expr(&'a self) -> Self::Output {
-        SliceIterExpr(self.iter())
+        SliceIterExpr {
+            index: (),
+            iter: self.iter(),
+        }
     }
 }
 
@@ -1227,7 +1241,10 @@ impl<'a, T: 'a + Clone> Expr<'a> for Vec<T> {
     type Output = SliceIterExpr<'a, T>;
     #[inline]
     fn expr(&'a self) -> Self::Output {
-        SliceIterExpr(self.iter())
+        SliceIterExpr {
+            index: (),
+            iter: self.iter(),
+        }
     }
 }
 
@@ -1236,6 +1253,7 @@ impl<'a, S: View<'a>, N: Copy> Expr<'a> for UniChunked<S, N> {
     #[inline]
     fn expr(&'a self) -> Self::Output {
         UniChunkedIterExpr {
+            index: (),
             data: self.data.view(),
             chunk_size: self.chunk_size,
         }
@@ -1746,20 +1764,22 @@ macro_rules! impl_array_vector_traits {
             }
         }
         impl<'a, T> IntoExpr for ChunkedN<&'a [T; $n]> {
-            type Expr = ChunkedNIterExpr<&'a [T]>;
+            type Expr = ChunkedNIterExpr<&'a [T], ()>;
             #[inline]
             fn into_expr(self) -> Self::Expr {
                 UniChunkedIterExpr {
+                    index: (),
                     data: self.data.view(),
                     chunk_size: self.chunk_size,
                 }
             }
         }
         impl<'a, T> IntoExpr for ChunkedN<&'a mut [T; $n]> {
-            type Expr = ChunkedNIterExpr<&'a mut [T]>;
+            type Expr = ChunkedNIterExpr<&'a mut [T], ()>;
             #[inline]
             fn into_expr(self) -> Self::Expr {
                 UniChunkedIterExpr {
+                    index: (),
                     data: self.data.view_mut(),
                     chunk_size: self.chunk_size,
                 }
@@ -2072,8 +2092,8 @@ mod tests {
 
     #[test]
     fn unichunked_dot() {
-        let a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
-        let b = ChunkedN::from_flat_with_stride(2, vec![5, 6, 7, 8]);
+        let a = <Tensor![i32; D D]>::from_size(&[2, 2]).map_storage(|_| vec![1, 2, 3, 4]);
+        let b = <Tensor![i32; D D]>::from_size(&[2, 2]).map_storage(|_| vec![5, 6, 7, 8]);
         assert_eq!(70, Evaluate::eval(DotOp::dot_op(a.expr(), b.expr())));
         assert_eq!(70, a.expr().dot(b.expr()));
 
@@ -2130,17 +2150,13 @@ mod tests {
 
     #[test]
     fn chunkedn_unichunked_add() {
-        let a =
-            ChunkedN::from_flat_with_stride(2, Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8]));
-        let b = ChunkedN::from_flat_with_stride(
-            2,
-            Chunked2::from_flat(vec![9, 10, 11, 12, 13, 14, 15, 16]),
-        );
+        let a = <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+            .map_storage(|_| vec![1, 2, 3, 4, 5, 6, 7, 8]);
+        let b = <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+            .map_storage(|_| vec![9, 10, 11, 12, 13, 14, 15, 16]);
         assert_eq!(
-            ChunkedN::from_flat_with_stride(
-                2,
-                Chunked2::from_flat(vec![10, 12, 14, 16, 18, 20, 22, 24]),
-            ),
+            <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+                .map_storage(|_| vec![10, 12, 14, 16, 18, 20, 22, 24]),
             Evaluate::eval(a.expr() + b.expr())
         );
     }
@@ -2182,7 +2198,11 @@ mod tests {
 
     #[test]
     fn sparse_add() {
-        let a = Sparse::from_dim(vec![0, 3, 5], 6, vec![1, 2, 3]);
+        // We can create a sparse vector from tuples using from_size and extend.
+        let mut a = <Tensor![i32; S]>::from_size(&[6]);
+        a.extend([(0, 1), (3, 2), (5, 3)].iter().cloned());
+
+        // Or directly using the flatk API.
         let b = Sparse::from_dim(vec![2, 4, 5], 6, vec![1, 2, 3]);
         assert_eq!(
             Sparse::from_dim(vec![0, 2, 3, 4, 5], 6, vec![1, 1, 2, 2, 6]),

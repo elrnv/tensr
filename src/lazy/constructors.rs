@@ -1,8 +1,9 @@
 #![macro_use]
 
-use flatk::*;
 use std::borrow::Borrow;
 use std::iter;
+
+use flatk::*;
 
 // The goal is to achieve this type of notation (from taco):
 //  let A: Tensor<f64> = /* Constructor */;
@@ -10,7 +11,7 @@ use std::iter;
 //  A(i,j) = B(i,j,k) * c(k);
 
 // Construct a tensor from a given size
-trait FromSize: Sized {
+pub trait FromSize: Sized {
     /// Construct the Tensor from a collection of sizes.
     #[inline]
     fn from_size<I: IntoIterator>(size: I) -> Self
@@ -160,10 +161,6 @@ macro_rules! Tensor {
     };
 }
 
-macro_rules! expr {
-    ($) => {};
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,16 +295,5 @@ mod tests {
         // A 3x3 matrix
         let m33 = <Tensor![f64; 3 3]>::from_size(&[3, 3]);
         assert_eq!(Chunked3::from_flat([0.0; 9]), m33);
-    }
-
-    #[test]
-    fn multiply() {
-        struct I;
-        struct J;
-        struct K;
-        struct L;
-        let c = <Tensor![f64; S]>::from_size(&[512]);
-        let b = <Tensor![f64; D S S 3]>::from_size(&[64, 42, 512, 3]);
-        let a: Tensor![f64; D S 3] = (b.expr::<I, J, K, L>() * c.expr::<K>()).eval::<I, J, L>();
     }
 }
