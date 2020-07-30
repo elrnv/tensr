@@ -4,35 +4,38 @@
 use super::*;
 
 #[derive(Debug)]
-pub struct SliceIterExprMut<'a, T>(std::slice::IterMut<'a, T>);
+pub struct SliceIterExprMut<'a, T, I = ()> {
+    index: I,
+    iter: std::slice::IterMut<'a, T>,
+}
 
-impl<'a, T> DenseExpr for SliceIterExprMut<'a, T> {}
+impl<'a, T, I> DenseExpr for SliceIterExprMut<'a, T, I> {}
 
-impl<'a, T, Out> Iterator for SliceIterExprMut<'a, T>
+impl<'a, T, Out, I> Iterator for SliceIterExprMut<'a, T, I>
 where
     &'a mut T: IntoExpr<Expr = Out>,
 {
     type Item = Out;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|x| x.into_expr())
+        self.iter.next().map(|x| x.into_expr())
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        self.iter.size_hint()
     }
 }
-impl<'a, T> Expression for SliceIterExprMut<'a, T> {}
-impl<'a, T> ExactSizeIterator for SliceIterExprMut<'a, T> where &'a mut T: IntoExpr {}
-impl<'a, T> ExprSize for SliceIterExprMut<'a, T> {
+impl<'a, T, I> Expression for SliceIterExprMut<'a, T, I> {}
+impl<'a, T, I> ExactSizeIterator for SliceIterExprMut<'a, T, I> where &'a mut T: IntoExpr {}
+impl<'a, T, I> ExprSize for SliceIterExprMut<'a, T, I> {
     fn expr_size(&self) -> usize {
-        self.0.size_hint().1.unwrap_or(self.0.size_hint().0)
+        self.iter.size_hint().1.unwrap_or(self.iter.size_hint().0)
     }
 }
-impl<'a, T> TotalExprSize for SliceIterExprMut<'a, T> {
+impl<'a, T, I> TotalExprSize for SliceIterExprMut<'a, T, I> {
     #[inline]
     fn total_size_hint(&self, _cwise_reduce: u32) -> Option<usize> {
-        Some(self.0.size_hint().1.unwrap_or(self.0.size_hint().0))
+        Some(self.iter.size_hint().1.unwrap_or(self.iter.size_hint().0))
     }
 }
 
@@ -42,18 +45,24 @@ pub trait ExprMut<'a> {
 }
 
 impl<'a, T: 'a> ExprMut<'a> for [T] {
-    type Output = SliceIterExprMut<'a, T>;
+    type Output = SliceIterExprMut<'a, T, ()>;
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
-        SliceIterExprMut(self.iter_mut())
+        SliceIterExprMut {
+            index: (),
+            iter: self.iter_mut(),
+        }
     }
 }
 
 impl<'a, T: 'a> ExprMut<'a> for Vec<T> {
-    type Output = SliceIterExprMut<'a, T>;
+    type Output = SliceIterExprMut<'a, T, ()>;
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
-        SliceIterExprMut(self.iter_mut())
+        SliceIterExprMut {
+            index: (),
+            iter: self.iter_mut(),
+        }
     }
 }
 
@@ -62,6 +71,7 @@ impl<'a, S: ViewMut<'a>, N: Copy> ExprMut<'a> for UniChunked<S, N> {
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
         UniChunkedIterExpr {
+            index: (),
             data: self.data.view_mut(),
             chunk_size: self.chunk_size,
         }
