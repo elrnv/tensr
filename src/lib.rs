@@ -18,6 +18,7 @@
 //!
 
 mod array_math;
+mod index_notation;
 mod lazy;
 mod matrix;
 
