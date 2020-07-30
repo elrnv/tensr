@@ -132,7 +132,7 @@ where
                 data.eval_extend(elem);
             }
         }
-        UniChunked::from_flat_with_stride(data, chunk_size.unwrap())
+        UniChunked::from_flat_with_stride(chunk_size.unwrap(), data)
     }
 }
 

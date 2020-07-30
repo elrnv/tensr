@@ -2072,8 +2072,8 @@ mod tests {
 
     #[test]
     fn unichunked_dot() {
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
-        let b = ChunkedN::from_flat_with_stride(vec![5, 6, 7, 8], 2);
+        let a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
+        let b = ChunkedN::from_flat_with_stride(2, vec![5, 6, 7, 8]);
         assert_eq!(70, Evaluate::eval(DotOp::dot_op(a.expr(), b.expr())));
         assert_eq!(70, a.expr().dot(b.expr()));
 
@@ -2084,10 +2084,10 @@ mod tests {
 
     #[test]
     fn chunkedn_add() {
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
-        let b = ChunkedN::from_flat_with_stride(vec![5, 6, 7, 8], 2);
+        let a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
+        let b = ChunkedN::from_flat_with_stride(2, vec![5, 6, 7, 8]);
         assert_eq!(
-            ChunkedN::from_flat_with_stride(vec![6, 8, 10, 12], 2),
+            ChunkedN::from_flat_with_stride(2, vec![6, 8, 10, 12]),
             (a.expr() + b.expr()).eval()
         );
     }
@@ -2102,10 +2102,10 @@ mod tests {
 
     #[test]
     fn chunkedn_add_assign() {
-        let mut a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
-        let b = ChunkedN::from_flat_with_stride(vec![5, 6, 7, 8], 2);
+        let mut a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
+        let b = ChunkedN::from_flat_with_stride(2, vec![5, 6, 7, 8]);
         a.expr_mut().add_assign(b.expr());
-        assert_eq!(ChunkedN::from_flat_with_stride(vec![6, 8, 10, 12], 2), a);
+        assert_eq!(ChunkedN::from_flat_with_stride(2, vec![6, 8, 10, 12]), a);
     }
 
     #[test]
@@ -2131,15 +2131,15 @@ mod tests {
     #[test]
     fn chunkedn_unichunked_add() {
         let a =
-            ChunkedN::from_flat_with_stride(Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8]), 2);
+            ChunkedN::from_flat_with_stride(2, Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8]));
         let b = ChunkedN::from_flat_with_stride(
-            Chunked2::from_flat(vec![9, 10, 11, 12, 13, 14, 15, 16]),
             2,
+            Chunked2::from_flat(vec![9, 10, 11, 12, 13, 14, 15, 16]),
         );
         assert_eq!(
             ChunkedN::from_flat_with_stride(
+                2,
                 Chunked2::from_flat(vec![10, 12, 14, 16, 18, 20, 22, 24]),
-                2
             ),
             Evaluate::eval(a.expr() + b.expr())
         );
@@ -2155,9 +2155,9 @@ mod tests {
         assert_eq!(vec![32u32, 64, 96], out);
 
         let a = 3;
-        let v = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
+        let v = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
         let out: ChunkedN<Vec<_>> = (v.expr() * a).eval();
-        assert_eq!(ChunkedN::from_flat_with_stride(vec![3, 6, 9, 12], 2), out);
+        assert_eq!(ChunkedN::from_flat_with_stride(2, vec![3, 6, 9, 12]), out);
     }
 
     #[test]
@@ -2171,9 +2171,9 @@ mod tests {
 
     #[test]
     fn complex_exprs() {
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
-        let b = ChunkedN::from_flat_with_stride(vec![5, 6, 7, 8], 2);
-        let c = ChunkedN::from_flat_with_stride(vec![9, 10, 11, 12], 2);
+        let a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
+        let b = ChunkedN::from_flat_with_stride(2, vec![5, 6, 7, 8]);
+        let c = ChunkedN::from_flat_with_stride(2, vec![9, 10, 11, 12]);
         let out: i32 = (2i32.into_tensor() * c.expr() + (b.expr() * a.expr().dot_op(c.expr()))
             - a.expr())
         .dot(b.expr());
@@ -2343,7 +2343,7 @@ mod tests {
             [34i32, 41, 48],
             a.expr().cwise_mul(b.expr()).reduce::<[i32; 3], _>(Addition)
         );
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3);
+        let a = ChunkedN::from_flat_with_stride(3, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let out: Vec<i32> = Evaluate::eval(Reduce::with_op(a.expr().cwise_mul(b.expr()), Addition));
         assert_eq!(vec![34i32, 41, 48], out);
     }
@@ -2352,8 +2352,8 @@ mod tests {
     fn reduce_into_unichunked() {
         let b = vec![2, 1];
         let a = ChunkedN::from_flat_with_stride(
-            Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
             3,
+            Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
         );
         let out: Chunked2<_> =
             Evaluate::eval(Reduce::with_op(a.expr().cwise_mul(b.expr()), Addition));
@@ -2394,7 +2394,7 @@ mod tests {
     #[test]
     fn matrix_vector_mul() {
         // Right vector multiply
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3);
+        let a = ChunkedN::from_flat_with_stride(3, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let b = vec![2, 1, 4];
         let out: Vec<i32> = Evaluate::eval(a.expr() * b.expr());
         assert_eq!(vec![16, 37, 58], out);
@@ -2407,18 +2407,18 @@ mod tests {
 
     #[test]
     fn matrix_matrix_mul() {
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4], 2);
+        let a = ChunkedN::from_flat_with_stride(2, vec![1, 2, 3, 4]);
         let out: ChunkedN<Vec<_>> = Evaluate::eval(a.expr() * a.expr());
-        assert_eq!(ChunkedN::from_flat_with_stride(vec![7, 10, 15, 22], 2), out);
+        assert_eq!(ChunkedN::from_flat_with_stride(2, vec![7, 10, 15, 22]), out);
 
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3);
+        let a = ChunkedN::from_flat_with_stride(3, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let out: ChunkedN<Vec<_>> = Evaluate::eval(a.expr() * a.expr());
         assert_eq!(
-            ChunkedN::from_flat_with_stride(vec![30, 36, 42, 66, 81, 96, 102, 126, 150], 3),
+            ChunkedN::from_flat_with_stride(3, vec![30, 36, 42, 66, 81, 96, 102, 126, 150]),
             out
         );
 
-        let a = ChunkedN::from_flat_with_stride(vec![1, 2, 3, 4, 5, 6, 7, 8, 9], 3);
+        let a = ChunkedN::from_flat_with_stride(3, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let b = Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let out: Chunked3<Vec<_>> = Evaluate::eval(a.expr() * b.expr());
         assert_eq!(
@@ -2460,8 +2460,8 @@ mod tests {
 
         // Sparse matrix with 2 entries in each row, there are 2 rows and 4 columns.
         let a = ChunkedN::from_flat_with_stride(
-            Sparse::from_dim(vec![0, 2, 1, 3], 4, vec![1, 2, 3, 4]),
             2,
+            Sparse::from_dim(vec![0, 2, 1, 3], 4, vec![1, 2, 3, 4]),
         );
         let b = vec![2, 1, 3, 4];
         let out: Vec<i32> = (a.expr() * b.expr()).eval();
