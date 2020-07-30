@@ -89,75 +89,104 @@ macro_rules! Tensor {
     ($real:ident $(; @)?) => {
         Vec<$real>
     };
-    // Starters
+    ($real:ident; & $($l:lifetime)? $(@)?) => {
+        & $($l)? [$real]
+    };
+    ($real:ident; & $($l:lifetime)? mut $(@)?) => {
+        & $($l)? mut [$real]
+    };
+
     // Outermost collections don't need to be chunked.
-    ($(($l:expr))? $real:ident; S $($layout:tt)*) => {
+    // Sparse starter
+    ($(($n:expr))? $real:ident; S $($layout:tt)*) => {
         Sparse<Tensor![$real; @ $($layout)*]>
     };
-    ($(($l:expr))? $real:ident; D $($layout:tt)*) => {
-        Tensor![$real; @ $($layout)*]
+    ($(($n:expr))? $real:ident; & $($l:lifetime)? S $($layout:tt)*) => {
+        Sparse<Tensor![$real; & $($l)? @ $($layout)*], ::std::ops::RangeTo<usize>, & $($l)? [usize]>
     };
-    ($(($l:expr))? $real:ident; @ S $($layout:tt)*) => {
+    ($(($n:expr))? $real:ident; & $($l:lifetime)? mut S $($layout:tt)*) => {
+        Sparse<Tensor![$real; & $($l)? mut @ $($layout)*], ::std::ops::RangeTo<usize>, & $($l)? mut [usize]>
+    };
+
+    // Dense starter
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? D $($layout:tt)*) => {
+        Tensor![$real; $(& $($l)? $($mut)?)? @ $($layout)*]
+    };
+
+    // Sparse recursive
+    ($(($n:expr))? $real:ident; @ S $($layout:tt)*) => {
         Chunked<Sparse<Tensor![$real; @ $($layout)*]>>
     };
-    ($(($l:expr))? $real:ident; @ D $($layout:tt)*) => {
-        ChunkedN<Tensor![$real; @ $($layout)*]>
+    ($(($n:expr))? $real:ident; & $($l:lifetime)? @ S $($layout:tt)*) => {
+        Chunked<Sparse<Tensor![$real; & $($l)? @ $($layout)*], ::std::ops::RangeTo<usize>, & $($l)? [usize]>, Offsets<&$($l)? [usize]>>
     };
-    (($l:expr) $real:ident; @ $n:expr) => {
-        [$real; $l * $n]
+    ($(($n:expr))? $real:ident; & $($l:lifetime)? mut @ S $($layout:tt)*) => {
+        Chunked<Sparse<Tensor![$real; & $($l)? mut @ $($layout)*], ::std::ops::RangeTo<usize>, & $($l)? mut [usize]>, Offsets<& $($l)? mut [usize]>>
     };
+
+    // Dense recursive
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ D $($layout:tt)*) => {
+        ChunkedN<Tensor![$real; $(& $($l)? $($mut)?)? @ $($layout)*]>
+    };
+
+    // Array base case
+    (($n:expr) $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ $m:expr) => {
+        $(& $($l)? $($mut)?)? [$real; $n * $m]
+    };
+
+    // Uniform dense recursive case
     // TODO: Turn these into a macro
     // See: https://github.com/rust-lang/rust/issues/35853 for reference
-    ($(($l:expr))? $real:ident; @ 1 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 1))? $real; @ $($layout)*], U1>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 1 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 1))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U1>
     };
-    ($(($l:expr))? $real:ident; @ 2 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 2))? $real; @ $($layout)*], U2>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 2 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 2))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U2>
     };
-    ($(($l:expr))? $real:ident; @ 3 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 3))? $real; @ $($layout)*], U3>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 3 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 3))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U3>
     };
-    ($(($l:expr))? $real:ident; @ 4 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 4))? $real; @ $($layout)*], U4>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 4 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 4))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U4>
     };
-    ($(($l:expr))? $real:ident; @ 5 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 5))? $real; @ $($layout)*], U5>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 5 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 5))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U5>
     };
-    ($(($l:expr))? $real:ident; @ 6 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 6))? $real; @ $($layout)*], U6>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 6 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 6))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U6>
     };
-    ($(($l:expr))? $real:ident; @ 7 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 7))? $real; @ $($layout)*], U7>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 7 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 7))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U7>
     };
-    ($(($l:expr))? $real:ident; @ 8 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 8))? $real; @ $($layout)*], U8>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 8 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 8))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U8>
     };
-    ($(($l:expr))? $real:ident; @ 9 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 9))? $real; @ $($layout)*], U9>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 9 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 9))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U9>
     };
-    ($(($l:expr))? $real:ident; @ 10 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 10))? $real; @ $($layout)*], U10>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 10 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 10))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U10>
     };
-    ($(($l:expr))? $real:ident; @ 11 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 11))? $real; @ $($layout)*], U11>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 11 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 11))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U11>
     };
-    ($(($l:expr))? $real:ident; @ 12 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 12))? $real; @ $($layout)*], U12>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 12 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 12))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U12>
     };
-    ($(($l:expr))? $real:ident; @ 13 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 13))? $real; @ $($layout)*], U13>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 13 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 13))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U13>
     };
-    ($(($l:expr))? $real:ident; @ 14 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 14))? $real; @ $($layout)*], U14>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 14 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 14))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U14>
     };
-    ($(($l:expr))? $real:ident; @ 15 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 15))? $real; @ $($layout)*], U15>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 15 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 15))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U15>
     };
-    ($(($l:expr))? $real:ident; @ 16 $($layout:tt)*) => {
-        UniChunked<Tensor![$(($l * 16))? $real; @ $($layout)*], U16>
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? @ 16 $($layout:tt)*) => {
+        UniChunked<Tensor![$(($n * 16))? $real; $(& $($l)? $($mut)?)? @ $($layout)*], U16>
     };
-    ($(($l:expr))? $real:ident; $($layout:tt)*) => {
-        Tensor![(1) $real; @ $($layout)*]
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? $($layout:tt)*) => {
+        Tensor![(1) $real; $(& $($l)? $($mut)?)? @ $($layout)*]
     };
 }
 
@@ -264,6 +293,38 @@ mod tests {
                 )
             ),
             ssss
+        );
+
+        let ssss33 = <Tensor![f64; S S S S 3 3]>::from_size(&[64, 32, 12, 16, 3, 3]);
+        let ssss33view: Tensor![f64; & S S S S 3 3] = ssss33.view();
+        assert_eq!(
+            Sparse::from_dim(
+                &[][..],
+                64,
+                Chunked::from_offsets(
+                    &[0][..],
+                    Sparse::from_dim(
+                        &[][..],
+                        32,
+                        Chunked::from_offsets(
+                            &[0][..],
+                            Sparse::from_dim(
+                                &[][..],
+                                12,
+                                Chunked::from_offsets(
+                                    &[0][..],
+                                    Sparse::from_dim(
+                                        &[][..],
+                                        16,
+                                        Chunked3::from_flat(Chunked3::from_flat(&[][..]))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            ssss33view
         );
 
         // Sparse row sparse column matrix
