@@ -2,6 +2,9 @@
 
 [![Build status](https://travis-ci.org/elrnv/tensr.svg?branch=master)](https://travis-ci.org/elrnv/tensr)
 
+Note: the word *tensor* used by this library refers to the n-dimensional array representation of a
+mathematical tensor.
+
 A prototype for a linear algebra library that aims at supporting:
  - Multi-demensional array ("tensor") arithmetic (including scalars, vectors, matrices and higher dimensional structures),
  - Small (array based) tensors,
@@ -15,12 +18,12 @@ A prototype for a linear algebra library that aims at supporting:
 
 Some subset of the features above has already been implemented.
 
-The goals of this library (in no particular order) are
+The quality criteria for this library (in no particular order) are
  - performance
  - simplicity (usage as well as implementation)
  - safety
 
-Meeting these goals is work in progress.
+Meeting these criteria is work in progress.
 
 Higher level algorithms like decompositions are currently outside the scope of this project and are
 expected to be provided by third-party crates.
