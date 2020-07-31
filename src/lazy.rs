@@ -1181,7 +1181,7 @@ impl<'a, S> IntoExpr for SubsetView<'a, S> {
     type Expr = SubsetIterExpr<'a, S>;
     #[inline]
     fn into_expr(self) -> Self::Expr {
-        let Subset { indices, data } = self;
+        let (indices, data) = self.into_raw();
         SubsetIterExpr { indices, data }
     }
 }
@@ -1296,15 +1296,13 @@ where
 impl<'a, S, I> Expr<'a> for Subset<S, I>
 where
     S: View<'a>,
-    I: View<'a, Type = &'a [usize]>,
+    I: AsRef<[usize]>,
 {
     type Output = SubsetIterExpr<'a, S::Type>;
     #[inline]
     fn expr(&'a self) -> Self::Output {
-        SubsetIterExpr {
-            indices: self.indices.as_ref().map(|i| i.view()),
-            data: self.data.view(),
-        }
+        let (indices, data) = self.view().into_raw();
+        SubsetIterExpr { indices, data }
     }
 }
 

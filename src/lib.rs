@@ -467,10 +467,8 @@ impl<S: IntoData, I> IntoData for Tensor<Subset<S, I>> {
     /// Converts this tensor into its raw data representation.
     #[inline]
     fn into_data(self) -> Self::Data {
-        Subset {
-            indices: self.data.indices,
-            data: self.data.data.into_data(),
-        }
+        let (indices, data) = self.data.into_raw();
+        unsafe { Subset::from_raw(indices, data.into_data()) }
     }
 }
 
@@ -565,11 +563,9 @@ impl<S: IntoTensor, I> IntoTensor for Subset<S, I> {
     type Tensor = Tensor<Subset<S::Tensor, I>>;
     #[inline]
     fn into_tensor(self) -> Self::Tensor {
+        let (indices, data) = self.into_raw();
         Tensor {
-            data: Subset {
-                indices: self.indices,
-                data: self.data.into_tensor(),
-            },
+            data: unsafe { Subset::from_raw(indices, data.into_tensor()) },
         }
     }
 }

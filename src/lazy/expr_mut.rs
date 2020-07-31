@@ -114,15 +114,13 @@ where
 impl<'a, S, I> ExprMut<'a> for Subset<S, I>
 where
     S: ViewMut<'a>,
-    I: View<'a, Type = &'a [usize]>,
+    I: AsRef<[usize]>,
 {
     type Output = SubsetIterExpr<'a, S::Type>;
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
-        SubsetIterExpr {
-            indices: self.indices.as_ref().map(|i| i.view()),
-            data: self.data.view_mut(),
-        }
+        let (indices, data) = self.view_mut().into_raw();
+        SubsetIterExpr { indices, data }
     }
 }
 

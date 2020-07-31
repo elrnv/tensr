@@ -7,7 +7,6 @@ mod ssblock;
 pub use sprs_compat::*;
 
 use super::*;
-use chunked::Offsets;
 use num_traits::{Float, Zero};
 use std::convert::AsRef;
 use std::ops::{Add, Mul, MulAssign};
