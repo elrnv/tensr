@@ -11,45 +11,48 @@ use flatk::*;
 //  A(i,j) = B(i,j,k) * c(k);
 
 // Construct a tensor from a given size
-pub trait FromSize: Sized {
+pub trait FromShape: Sized {
     /// Construct the Tensor from a collection of sizes.
     #[inline]
-    fn from_size<I: IntoIterator>(size: I) -> Self
+    fn from_shape<I: IntoIterator>(size: I) -> Self
     where
         I::Item: Borrow<usize>,
     {
-        Self::from_size_iter(size.into_iter().map(|i| *i.borrow()))
+        Self::from_shape_iter(size.into_iter().map(|i| *i.borrow()))
     }
 
     /// Construct the Tensor from a size iterator.
-    fn from_size_iter<I: Iterator<Item = usize>>(size: I) -> Self;
+    fn from_shape_iter<I: Iterator<Item = usize>>(size: I) -> Self;
 }
 
-impl<S: Set + FromSize> FromSize for Sparse<S> {
-    fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+impl<S: Set + FromShape> FromShape for Sparse<S> {
+    fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
         Self::from_dim(
             vec![],
             size.next().expect("Not enough sizes specified"),
-            S::from_size_iter(iter::once(0).chain(size)),
+            S::from_shape_iter(iter::once(0).chain(size)),
         )
     }
 }
-impl<S: Set + FromSize> FromSize for Chunked<S> {
-    fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+impl<S: Set + FromShape> FromShape for Chunked<S> {
+    fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
         let n = size.next().expect("Not enough sizes specified");
-        Self::from_offsets(vec![0; n + 1], S::from_size_iter(size))
+        Self::from_offsets(vec![0; n + 1], S::from_shape_iter(size))
     }
 }
-impl<S: Set + FromSize> FromSize for ChunkedN<S> {
-    fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+impl<S: Set + FromShape> FromShape for ChunkedN<S> {
+    fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
         let rows = size.next().expect("Not enough sizes specified");
         let cols = size.next().expect("Not enough sizes specified");
-        Self::from_flat_with_stride(cols, S::from_size_iter(iter::once(rows * cols).chain(size)))
+        Self::from_flat_with_stride(
+            cols,
+            S::from_shape_iter(iter::once(rows * cols).chain(size)),
+        )
     }
 }
 
-impl<S: Set + FromSize, N: Unsigned + Default> FromSize for UniChunked<S, U<N>> {
-    fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+impl<S: Set + FromShape, N: Unsigned + Default> FromShape for UniChunked<S, U<N>> {
+    fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
         let rows = size.next().expect("Not enough sizes specified");
         let cols = size.next().expect("Not enough sizes specified");
         assert_eq!(
@@ -57,31 +60,31 @@ impl<S: Set + FromSize, N: Unsigned + Default> FromSize for UniChunked<S, U<N>> 
             N::to_usize(),
             "Static size doesn't correspond to the one given"
         );
-        Self::from_flat(S::from_size_iter(iter::once(rows * cols).chain(size)))
+        Self::from_flat(S::from_shape_iter(iter::once(rows * cols).chain(size)))
     }
 }
 
-impl<T: Default + Clone> FromSize for Vec<T> {
-    fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+impl<T: Default + Clone> FromShape for Vec<T> {
+    fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
         vec![T::default(); size.next().expect("Not enough sizes specified")]
     }
 }
 
-macro_rules! impl_from_size_for_array {
+macro_rules! impl_from_shape_for_array {
     () => { };
     ($n:literal $(,$ns:literal)* $(,)*) => {
-        impl<T: Default + Copy> FromSize for [T; $n] {
-            fn from_size_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
+        impl<T: Default + Copy> FromShape for [T; $n] {
+            fn from_shape_iter<I: Iterator<Item = usize>>(mut size: I) -> Self {
                 let n = size.next().expect("Not enough sizes specified");
                 assert_eq!( n, $n, "Static size doesn't correspond to the one given");
                 [T::default(); $n]
             }
         }
-        impl_from_size_for_array!($($ns,)*);
+        impl_from_shape_for_array!($($ns,)*);
     }
 }
 
-impl_from_size_for_array!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+impl_from_shape_for_array!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
 
 #[macro_export]
 macro_rules! Tensor {
@@ -197,18 +200,18 @@ mod tests {
     #[test]
     fn create() {
         // Sparse vector
-        let s = <Tensor![f64; S]>::from_size(&[512]);
+        let s = <Tensor![f64; S]>::from_shape(&[512]);
         assert_eq!(Sparse::from_dim(vec![], 512, vec![]), s);
 
         // Sparse row dense column matrix
-        let sd = <Tensor![f64; S D]>::from_size(&[64, 32]);
+        let sd = <Tensor![f64; S D]>::from_shape(&[64, 32]);
         assert_eq!(
             &Sparse::from_dim(vec![], 64, ChunkedN::from_flat_with_stride(32, vec![])),
             &sd
         );
 
         // Sparse row dense column matrix of 3D vectors
-        let sd3 = <Tensor![f64; S D 3]>::from_size(&[512, 64, 3]);
+        let sd3 = <Tensor![f64; S D 3]>::from_shape(&[512, 64, 3]);
         assert_eq!(
             Sparse::from_dim(
                 vec![],
@@ -219,22 +222,22 @@ mod tests {
         );
 
         // Standard Dense matrix
-        let dd = <Tensor![f64; D D]>::from_size(vec![128, 64]);
+        let dd = <Tensor![f64; D D]>::from_shape(vec![128, 64]);
         assert_eq!(ChunkedN::from_flat_with_stride(64, vec![0.0; 128 * 64]), dd);
 
         // Dense row sparse column (CSR) matrix
-        let ds = <Tensor![f64; D S]>::from_size(&[32, 12]);
+        let ds = <Tensor![f64; D S]>::from_shape(&[32, 12]);
         assert_eq!(
             Chunked::from_offsets(vec![0; 32 + 1], Sparse::from_dim(vec![], 12, vec![])),
             ds
         );
 
         // Dense blocks of sparse row dense col matrices
-        let dsd = <Tensor![f64; D S D]>::from_size(&[16, 64, 32]);
+        let dsd = <Tensor![f64; D S D]>::from_shape(&[16, 64, 32]);
         assert_eq!(Chunked::from_offsets(vec![0; 16 + 1], sd.clone()), dsd);
 
         // Dense row sparse column matrix of DS blocks
-        let dsds = <Tensor![f64; D S D S]>::from_size(&[16, 64, 32, 12]);
+        let dsds = <Tensor![f64; D S D S]>::from_shape(&[16, 64, 32, 12]);
         assert_eq!(
             Chunked::from_offsets(
                 vec![0; 16 + 1],
@@ -251,7 +254,7 @@ mod tests {
         );
 
         // Sparse row dense column matrix of SD blocks
-        let sdsd = <Tensor![f64; S D S D]>::from_size(&[64, 32, 12, 16]);
+        let sdsd = <Tensor![f64; S D S D]>::from_shape(&[64, 32, 12, 16]);
         assert_eq!(
             Sparse::from_dim(
                 vec![],
@@ -268,7 +271,7 @@ mod tests {
         );
 
         // Sparse row sparse column matrix of SS blocks
-        let ssss = <Tensor![f64; S S S S]>::from_size(&[64, 32, 12, 16]);
+        let ssss = <Tensor![f64; S S S S]>::from_shape(&[64, 32, 12, 16]);
         assert_eq!(
             Sparse::from_dim(
                 vec![],
@@ -295,7 +298,7 @@ mod tests {
             ssss
         );
 
-        let ssss33 = <Tensor![f64; S S S S 3 3]>::from_size(&[64, 32, 12, 16, 3, 3]);
+        let ssss33 = <Tensor![f64; S S S S 3 3]>::from_shape(&[64, 32, 12, 16, 3, 3]);
         let ssss33view: Tensor![f64; & S S S S 3 3] = ssss33.view();
         assert_eq!(
             Sparse::from_dim(
@@ -328,7 +331,7 @@ mod tests {
         );
 
         // Sparse row sparse column matrix
-        let ss = <Tensor![f64; S S]>::from_size(&[128, 64]);
+        let ss = <Tensor![f64; S S]>::from_shape(&[128, 64]);
         assert_eq!(
             Sparse::from_dim(
                 vec![],
@@ -339,22 +342,32 @@ mod tests {
         );
 
         // Sparse row with 3 vector columns
-        let s3 = <Tensor![f64; S 3]>::from_size(&[128, 3]);
+        let s3 = <Tensor![f64; S 3]>::from_shape(&[128, 3]);
         assert_eq!(
             Sparse::from_dim(vec![], 128, Chunked3::from_flat(vec![])),
             s3
         );
 
         // Dense row with 3 vector columns
-        let d3 = <Tensor![f64; D 3]>::from_size(&[128, 3]);
+        let d3 = <Tensor![f64; D 3]>::from_shape(&[128, 3]);
         assert_eq!(Chunked3::from_flat(vec![0.0; 128 * 3]), d3);
 
+        // Dense row with 3 vector columns
+        let dd34 = <Tensor![f64; D D 3 4]>::from_shape(&[10, 11, 3, 4]);
+        assert_eq!(
+            ChunkedN::from_flat_with_stride(
+                11,
+                Chunked3::from_flat(Chunked4::from_flat(vec![0.0; 10 * 11 * 3 * 4]))
+            ),
+            dd34
+        );
+
         // A 3D vector
-        let v3 = <Tensor![f64; 3]>::from_size(&[3]);
+        let v3 = <Tensor![f64; 3]>::from_shape(&[3]);
         assert_eq!([0.0; 3], v3);
 
         // A 3x3 matrix
-        let m33 = <Tensor![f64; 3 3]>::from_size(&[3, 3]);
+        let m33 = <Tensor![f64; 3 3]>::from_shape(&[3, 3]);
         assert_eq!(Chunked3::from_flat([0.0; 9]), m33);
     }
 }

@@ -2090,8 +2090,8 @@ mod tests {
 
     #[test]
     fn unichunked_dot() {
-        let a = <Tensor![i32; D D]>::from_size(&[2, 2]).map_storage(|_| vec![1, 2, 3, 4]);
-        let b = <Tensor![i32; D D]>::from_size(&[2, 2]).map_storage(|_| vec![5, 6, 7, 8]);
+        let a = <Tensor![i32; D D]>::from_shape(&[2, 2]).map_storage(|_| vec![1, 2, 3, 4]);
+        let b = <Tensor![i32; D D]>::from_shape(&[2, 2]).map_storage(|_| vec![5, 6, 7, 8]);
         assert_eq!(70, Evaluate::eval(DotOp::dot_op(a.expr(), b.expr())));
         assert_eq!(70, a.expr().dot(b.expr()));
 
@@ -2148,12 +2148,12 @@ mod tests {
 
     #[test]
     fn chunkedn_unichunked_add() {
-        let a = <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+        let a = <Tensor![i32; D D 2]>::from_shape(&[2, 2, 2])
             .map_storage(|_| vec![1, 2, 3, 4, 5, 6, 7, 8]);
-        let b = <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+        let b = <Tensor![i32; D D 2]>::from_shape(&[2, 2, 2])
             .map_storage(|_| vec![9, 10, 11, 12, 13, 14, 15, 16]);
         assert_eq!(
-            <Tensor![i32; D D 2]>::from_size(&[2, 2, 2])
+            <Tensor![i32; D D 2]>::from_shape(&[2, 2, 2])
                 .map_storage(|_| vec![10, 12, 14, 16, 18, 20, 22, 24]),
             Evaluate::eval(a.expr() + b.expr())
         );
@@ -2196,8 +2196,8 @@ mod tests {
 
     #[test]
     fn sparse_add() {
-        // We can create a sparse vector from tuples using from_size and extend.
-        let mut a = <Tensor![i32; S]>::from_size(&[6]);
+        // We can create a sparse vector from tuples using from_shape and extend.
+        let mut a = <Tensor![i32; S]>::from_shape(&[6]);
         a.extend([(0, 1), (3, 2), (5, 3)].iter().cloned());
 
         // Or directly using the flatk API.

@@ -63,15 +63,15 @@ impl<'a, I, S: View<'a>, N: Copy> IExpr<'a, I> for UniChunked<S, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lazy::constructors::FromSize;
+    use crate::lazy::constructors::FromShape;
 
     #[test]
     fn multiply() {
         struct I;
         struct J;
         struct K;
-        let _ = <Tensor![f64; D]>::from_size(&[42]);
-        let b = <Tensor![f64; D D 3]>::from_size(&[64, 42, 3]);
+        let _ = <Tensor![f64; D]>::from_shape(&[42]);
+        let b = <Tensor![f64; D D 3]>::from_shape(&[64, 42, 3]);
         let _ = b.iexpr((I, J, K));
         //let a: Tensor![f64; D 3] = (b.iexpr::<I, J, K>() * c.iexpr::<J>()).eval::<I, K>();
     }
