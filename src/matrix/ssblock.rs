@@ -458,6 +458,7 @@ impl Mul<Transpose<SSBlockMatrix3View<'_>>> for SSBlockMatrix3View<'_> {
 
 impl SSBlockMatrix3View<'_> {
     /// Multiply `self` by the given `rhs` vector into the given `out` view.
+    ///
     /// Note that the output vector `out` may be more sparse than the number of
     /// rows in `self`, however it is assumed that enough elements is allocated
     /// in `out` to ensure that the result fits. Entries are packed towards the
