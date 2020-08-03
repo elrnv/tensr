@@ -112,8 +112,11 @@ macro_rules! Tensor {
     };
 
     // Dense starter
-    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? $($mut:ident)?)? D $($layout:tt)*) => {
-        Tensor![$real; $(& $($l)? $($mut)?)? @ $($layout)*]
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)?)? D $($layout:tt)*) => {
+        Tensor![$real; $(& $($l)?)? @ $($layout)*]
+    };
+    ($(($n:expr))? $real:ident; $(& $($l:lifetime)? mut)? D $($layout:tt)*) => {
+        Tensor![$real; $(& $($l)? mut)? @ $($layout)*]
     };
 
     // Sparse recursive
@@ -196,6 +199,8 @@ macro_rules! Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    type TestTensorView<'a> = Tensor![f64; &'a D D D D 3 3];
 
     #[test]
     fn create() {
@@ -328,6 +333,23 @@ mod tests {
                 )
             ),
             ssss33view
+        );
+
+        let dddd33 = <Tensor![f64; D D D D 3 3]>::from_shape(&[64, 32, 12, 16, 3, 3]);
+        let zeros = vec![0.0; 64 * 32 * 12 * 16 * 3 * 3];
+        let dddd33view: TestTensorView = dddd33.view();
+        assert_eq!(
+            ChunkedN::from_flat_with_stride(
+                32,
+                ChunkedN::from_flat_with_stride(
+                    12,
+                    ChunkedN::from_flat_with_stride(
+                        16,
+                        Chunked3::from_flat(Chunked3::from_flat(zeros.as_slice()))
+                    )
+                )
+            ),
+            dddd33view
         );
 
         // Sparse row sparse column matrix
