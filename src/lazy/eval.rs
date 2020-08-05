@@ -138,7 +138,7 @@ where
 
 impl<I: Iterator + Expression, S, T, J, E> Evaluate<I> for Chunked<Sparse<S, T, J>>
 where
-    J: Default + Push<usize> + AsRef<[usize]> + Reserve,
+    J: Default + Push<usize> + AsIndexSlice + Reserve,
     I::Item: Iterator<Item = IndexedExpr<E>> + Target<Target = T>,
     T: Set + Clone + PartialEq + std::fmt::Debug,
     S: Set + Default + Reserve + EvalExtend<E>,
@@ -197,7 +197,7 @@ where
     Self: EvalExtend<I>,
     I: Target<Target = T>,
     T: Set + Clone,
-    J: Default + AsRef<[usize]>,
+    J: Default + AsIndexSlice,
     S: Set + Default,
 {
     fn eval(iter: I) -> Self {

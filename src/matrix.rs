@@ -8,7 +8,6 @@ pub use sprs_compat::*;
 
 use super::*;
 use num_traits::{Float, Zero};
-use std::convert::AsRef;
 use std::ops::{Add, Mul, MulAssign};
 
 pub use ssblock::*;
@@ -126,7 +125,7 @@ pub type DSMatrixBase<T, I> = Tensor<Chunked<Tensor<Sparse<T, Dim, I>>, Offsets<
 pub type DSMatrix<T = f64, I = Vec<usize>> = DSMatrixBase<Tensor<Vec<T>>, I>;
 pub type DSMatrixView<'a, T = f64> = DSMatrixBase<&'a Tensor<[T]>, &'a [usize]>;
 
-impl<S: IntoData, I: AsRef<[usize]>> Matrix for DSMatrixBase<S, I>
+impl<S: IntoData, I: AsIndexSlice> Matrix for DSMatrixBase<S, I>
 where
     S::Data: Set,
 {
@@ -247,7 +246,7 @@ impl DSMatrix {
 //    }
 //}
 
-impl<T: Scalar, I: AsRef<[usize]>> DSMatrix<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSMatrix<T, I> {
     /// Compress the matrix representation by consolidating duplicate entries.
     pub fn compressed(&self) -> DSMatrix<T> {
         self.view()
@@ -257,7 +256,7 @@ impl<T: Scalar, I: AsRef<[usize]>> DSMatrix<T, I> {
     }
 }
 
-impl<T: Scalar, I: AsRef<[usize]>> DSMatrix<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSMatrix<T, I> {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
     pub fn pruned(&self, keep: impl Fn(usize, usize, &T) -> bool) -> DSMatrix<T> {
         self.view()
@@ -939,7 +938,7 @@ impl DSBlockMatrix3 {
     }
 }
 
-impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix3<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3<T, I> {
     /// Compress the matrix representation by consolidating duplicate entries.
     pub fn compressed(&self) -> DSBlockMatrix3<T> {
         self.as_data()
@@ -949,7 +948,7 @@ impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix3<T, I> {
     }
 }
 
-impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix3<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3<T, I> {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
     pub fn pruned(&self, keep: impl Fn(usize, usize, &Matrix3<T>) -> bool) -> DSBlockMatrix3<T> {
         self.as_data()
@@ -1018,7 +1017,7 @@ impl DSBlockMatrix1x3 {
     }
 }
 
-impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix1x3<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
     /// Compress the matrix representation by consolidating duplicate entries.
     pub fn compressed(&self) -> DSBlockMatrix1x3<T> {
         self.as_data()
@@ -1028,7 +1027,7 @@ impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix1x3<T, I> {
     }
 }
 
-impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix1x3<T, I> {
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
     pub fn pruned(
         &self,
@@ -1044,7 +1043,7 @@ impl<T: Scalar, I: AsRef<[usize]>> DSBlockMatrix1x3<T, I> {
     }
 }
 
-impl<'a, T: Scalar, I: Set + AsRef<[usize]>> DSBlockMatrix3<T, I> {
+impl<'a, T: Scalar, I: Set + AsIndexSlice> DSBlockMatrix3<T, I> {
     pub fn write_img<P: AsRef<std::path::Path>>(&'a self, path: P) {
         use image::ImageBuffer;
 

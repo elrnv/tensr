@@ -57,7 +57,7 @@ impl<S: Set + IntoData, I, N: Dimension, M: Dimension> Matrix for SSBlockMatrixB
     }
 }
 
-impl<'a, I: Set + AsRef<[usize]>> SSBlockMatrix3<f64, I> {
+impl<'a, I: Set + AsIndexSlice> SSBlockMatrix3<f64, I> {
     pub fn write_img<P: AsRef<std::path::Path>>(&'a self, path: P) {
         use image::ImageBuffer;
 
@@ -184,7 +184,7 @@ fn is_unique(indices: &[usize]) -> bool {
     true
 }
 
-impl<I: AsRef<[usize]>> SSBlockMatrix3<f64, I>
+impl<I: AsIndexSlice> SSBlockMatrix3<f64, I>
 where
     Self: for<'a> View<'a, Type = SSBlockMatrix3View<'a>>,
     I: IntoOwned<Owned = Vec<usize>>,
@@ -205,7 +205,7 @@ where
     }
 }
 
-impl<I: AsRef<[usize]>> SSBlockMatrix3<f64, I>
+impl<I: AsIndexSlice> SSBlockMatrix3<f64, I>
 where
     Self: for<'a> View<'a, Type = SSBlockMatrix3View<'a>>,
     I: IntoOwned<Owned = Vec<usize>>,
