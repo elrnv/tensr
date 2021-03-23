@@ -464,7 +464,7 @@ pub trait Expression: TotalExprSize {
     }
 
     #[inline]
-    fn reduce<T, F>(self, f: F) -> T
+    fn reduce_with<T, F>(self, f: F) -> T
     where
         Self: Sized,
         T: Evaluate<Reduce<Self, F>>,
@@ -2356,10 +2356,12 @@ mod tests {
     fn reduce() {
         let a = Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let b = vec![2, 1, 4];
-        assert_eq!(7, b.expr().reduce(Addition));
+        assert_eq!(7, b.expr().reduce_with(Addition));
         assert_eq!(
             [34i32, 41, 48],
-            a.expr().cwise_mul(b.expr()).reduce::<[i32; 3], _>(Addition)
+            a.expr()
+                .cwise_mul(b.expr())
+                .reduce_with::<[i32; 3], _>(Addition)
         );
         let a = ChunkedN::from_flat_with_stride(3, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         let out: Vec<i32> = Evaluate::eval(Reduce::with_op(a.expr().cwise_mul(b.expr()), Addition));

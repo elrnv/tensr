@@ -12,17 +12,17 @@ documentation = "https://docs.rs/tensr"
 keywords = ["tensor", "sparse", "lazy", "block", "linear algebra"]
 
 [dependencies]
-flatk = { git = "https://github.com/elrnv/flatk.git", version = "0.3", features = ["rayon"] }
+flatk = { git = "https://github.com/elrnv/flatk.git", version = "0.4", features = ["rayon"] }
 reinterpret = "0.2"
 bytemuck = "1.5"
-sprs = { version = "0.9.3", optional = true }
+sprs = { version = "0.10", optional = true }
 image = "0.23"
 unroll = "0.1"
 num-traits = "0.2"
 rayon = "1.5"
 typenum = "1.12"
 autodiff = { version = "0.3", optional = true, features = ["bytemuck"] }
-packed_simd = { version = "0.3", optional = true }
+packed_simd_2 = { version = "0.3", optional = true }
 approx = { version = "0.4", optional = true }
 
 [dev-dependencies]
@@ -31,7 +31,7 @@ criterion = "0.3"
 rand = "0.8"
 
 [features]
-unstable = ["criterion/real_blackbox", "packed_simd"]
+unstable = ["criterion/real_blackbox", "packed_simd_2"]
 default = ["sprs", "approx"]
 
 [[bench]]

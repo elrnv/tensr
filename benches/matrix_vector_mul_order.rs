@@ -4,8 +4,8 @@ use flatk::*;
 use rayon::prelude::*;
 use tensr::*;
 
-#[cfg(feature = "packed_simd")]
-use packed_simd::*;
+#[cfg(feature = "packed_simd_2")]
+use packed_simd_2::*;
 
 /// Generate a random vector of float values between -1 and 1.
 pub fn random_vec(n: usize) -> Vec<f64> {
@@ -65,7 +65,7 @@ pub fn inner(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     out
 }
 
-#[cfg(feature = "packed_simd")]
+#[cfg(feature = "packed_simd_2")]
 pub fn inner_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let mut out = vec![0.0; v.len()];
     for (row, out) in m.iter().zip(out.iter_mut()) {
@@ -90,7 +90,7 @@ pub fn inner_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     out
 }
 
-#[cfg(feature = "packed_simd")]
+#[cfg(feature = "packed_simd_2")]
 pub fn inner_outer_simd(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let mut out = vec![0.0; v.len()];
     let n = v.len();
@@ -315,7 +315,7 @@ fn matrix_vector_mul_order_benchmark(c: &mut Criterion) {
                 )
             },
         );
-        #[cfg(feature = "packed_simd")]
+        #[cfg(feature = "packed_simd_2")]
         {
             approx_equal(
                 inner_par(m.view(), v.view()),

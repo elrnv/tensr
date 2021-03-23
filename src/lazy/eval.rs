@@ -270,13 +270,13 @@ macro_rules! impl_array_matrix_eval_traits {
         impl<T: Scalar> EvalExtend<Tensor<[Tensor<[Tensor<T>; $c]>; $r]>> for UniChunked<Vec<T>, $cty> {
             #[inline]
             fn eval_extend(&mut self, tensor: Tensor<[Tensor<[Tensor<T>; $c]>; $r]>) {
-                self.data.extend_from_slice(tensor.into_data().as_slice());
+                self.data.extend_from_slice(tensor.into_data().as_flat_slice());
             }
         }
         impl<T: Scalar> EvalExtend<Tensor<[Tensor<[Tensor<T>; $c]>; $r]>> for UniChunked<UniChunked<Vec<T>, $cty>, $rty> {
             #[inline]
             fn eval_extend(&mut self, tensor: Tensor<[Tensor<[Tensor<T>; $c]>; $r]>) {
-                self.data.data.extend_from_slice(tensor.into_data().as_slice());
+                self.data.data.extend_from_slice(tensor.into_data().as_flat_slice());
             }
         }
 
