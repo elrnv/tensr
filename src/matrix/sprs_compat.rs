@@ -8,33 +8,41 @@ use std::convert::AsRef;
 impl<S, I> Into<sprs::CsMat<f64>> for DSBlockMatrixBase<S, I, U3, U3>
 where
     // Needed for num_cols/num_rows
-    S: Set,
-    I: Set + AsRef<[usize]>,
+    S: Set + IntoData,
+    I: Set + IntoOwned<Owned = Vec<usize>> + AsRef<[usize]>,
+    S::Data: IntoStorage,
+    <S::Data as IntoStorage>::StorageType: IntoOwned<Owned = Vec<f64>>,
     // Needed for view
     Self: for<'a> View<'a, Type = DSBlockMatrix3View<'a>>,
 {
     fn into(self) -> sprs::CsMat<f64> {
-        let view = self.view();
-        let num_rows = view.num_total_rows();
-        let num_cols = view.num_total_cols();
+        let num_rows = self.view().num_total_rows();
+        let num_cols = self.view().num_total_cols();
 
-        let view = view.as_data();
-        let values = view.clone().into_storage().as_ref().to_vec();
+        let data = self.into_data();
+        let Chunked {
+            chunks: block_offsets,
+            data:
+                Sparse {
+                    selection:
+                        Select {
+                            indices: block_indices,
+                            ..
+                        },
+                    source,
+                },
+        } = data;
+        let values = source.into_storage().into_owned();
 
-        let (rows, cols) = {
-            view.into_iter()
-                .enumerate()
-                .flat_map(move |(row_idx, row)| {
-                    row.into_iter().flat_map(move |(col_idx, _)| {
-                        (0..3).flat_map(move |row| {
-                            (0..3).map(move |col| (3 * row_idx + row, 3 * col_idx + col))
-                        })
-                    })
-                })
-                .unzip()
-        };
+        let mut offsets = block_offsets.into_inner().into_owned();
+        offsets.iter_mut().for_each(|off| *off *= 3);
+        let indices: Vec<usize> = block_indices
+            .as_ref()
+            .iter()
+            .flat_map(|blk_idx| (0..3).map(move |i| 3 * blk_idx + i))
+            .collect();
 
-        sprs::TriMat::from_triplets((num_rows, num_cols), rows, cols, values).to_csr()
+        sprs::CsMat::new((num_rows, num_cols), offsets, indices, values)
     }
 }
 
@@ -43,19 +51,15 @@ impl Into<sprs::CsMat<f64>> for DSMatrix {
         let num_rows = self.num_rows();
         let num_cols = self.num_cols();
 
-        let (rows, cols) = {
-            self.as_data()
-                .view()
-                .into_iter()
-                .enumerate()
-                .flat_map(move |(row_idx, row)| {
-                    row.into_iter().map(move |(col_idx, _)| (row_idx, col_idx))
-                })
-                .unzip()
-        };
+        let Chunked {
+            chunks: offsets,
+            data:
+                Sparse {
+                    selection: Select { indices, .. },
+                    source: values,
+                },
+        } = self.into_data();
 
-        let values = self.into_data().into_storage();
-
-        sprs::TriMat::from_triplets((num_rows, num_cols), rows, cols, values).to_csr()
+        sprs::CsMat::new((num_rows, num_cols), offsets.into_inner(), indices, values)
     }
 }
