@@ -12,7 +12,7 @@ documentation = "https://docs.rs/tensr"
 keywords = ["tensor", "sparse", "lazy", "block", "linear algebra"]
 
 [dependencies]
-flatk = { git = "https://github.com/elrnv/flatk.git", version = "0.4", features = ["rayon"] }
+flatk = { git = "https://github.com/elrnv/flatk.git", version = "0.5", features = ["rayon"] }
 reinterpret = "0.2"
 bytemuck = "1.5"
 sprs = { version = "0.10", optional = true }

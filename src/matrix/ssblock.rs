@@ -221,6 +221,7 @@ where
             data.view().source.pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
+                |_, _| {},
             ),
         )
         .into_tensor()

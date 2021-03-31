@@ -257,11 +257,22 @@ impl<T: Scalar, I: AsIndexSlice> DSMatrix<T, I> {
 }
 
 impl<T: Scalar, I: AsIndexSlice> DSMatrix<T, I> {
-    /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
-    pub fn pruned(&self, keep: impl Fn(usize, usize, &T) -> bool) -> DSMatrix<T> {
+    /// Remove all elements that do not satisfy the given predicate and compress
+    /// the resulting matrix.
+    ///
+    /// The `mapping` function allows the caller to keep track of how the global
+    /// index array changes as a result. For each kept element in the original
+    /// matrix, `mapping` will be called with the first parameter being the
+    /// original index and second parameter being the destination index in the
+    /// output matrix.
+    pub fn pruned(
+        &self,
+        keep: impl Fn(usize, usize, &T) -> bool,
+        mapping: impl FnMut(usize, usize),
+    ) -> DSMatrix<T> {
         self.view()
             .into_data()
-            .pruned(|a, &b| *a += b, keep)
+            .pruned(|a, &b| *a += b, keep, mapping)
             .into_tensor()
     }
 }
@@ -956,6 +967,7 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3<T, I> {
             .pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
+                |_, _| {},
             )
             .into_tensor()
     }
@@ -1038,6 +1050,7 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
             .pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
+                |_, _| {},
             )
             .into_tensor()
     }
