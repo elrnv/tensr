@@ -151,11 +151,11 @@ where
     }
 }
 
-impl DSMatrix {
+impl<T: Scalar> DSMatrix<T> {
     /// Construct a sparse matrix from a given iterator of triplets.
     pub fn from_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
     where
-        I: Iterator<Item = (usize, usize, f64)>,
+        I: Iterator<Item = (usize, usize, T)>,
     {
         Self::from_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
@@ -166,7 +166,7 @@ impl DSMatrix {
     /// the process, thus saving an extra pass through the values.
     pub fn from_triplets_iter_uncompressed<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
     where
-        I: Iterator<Item = (usize, usize, f64)>,
+        I: Iterator<Item = (usize, usize, T)>,
     {
         let mut triplets: Vec<_> = iter.collect();
         triplets.sort_by_key(|&(row, _, _)| row);
@@ -177,7 +177,7 @@ impl DSMatrix {
     /// restriction.
     pub fn from_sorted_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
     where
-        I: Iterator<Item = (usize, usize, f64)>,
+        I: Iterator<Item = (usize, usize, T)>,
     {
         Self::from_sorted_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
@@ -190,11 +190,11 @@ impl DSMatrix {
         num_cols: usize,
     ) -> Self
     where
-        I: Iterator<Item = (usize, usize, f64)>,
+        I: Iterator<Item = (usize, usize, T)>,
     {
         let cap = iter.size_hint().0;
         let mut cols = Vec::with_capacity(cap);
-        let mut vals: Vec<f64> = Vec::with_capacity(cap);
+        let mut vals: Vec<T> = Vec::with_capacity(cap);
         let mut offsets = Vec::with_capacity(num_rows);
 
         let mut prev_row = 0; // offset by +1 so we don't have to convert between isize.
