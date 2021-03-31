@@ -46,8 +46,8 @@ where
     }
 }
 
-impl Into<sprs::CsMat<f64>> for DSMatrix {
-    fn into(self) -> sprs::CsMat<f64> {
+impl<T> Into<sprs::CsMat<T>> for DSMatrix<T> {
+    fn into(self) -> sprs::CsMat<T> {
         let num_rows = self.num_rows();
         let num_cols = self.num_cols();
 
