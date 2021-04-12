@@ -1304,32 +1304,46 @@ impl<'a> Mul<&'a Tensor<[f64]>> for Transpose<DSMatrixView<'_>> {
     }
 }
 
-impl<'a> DSMatrixView<'_> {
+const SMALLEST_CHUNK_SIZE: usize = 1_000;
+
+impl<'a, T: Scalar> DSMatrixView<'_, T> {
     /// Parallel version of `add_mul_in_place`.
-    pub fn add_left_mul_in_place_par(&self, lhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+    pub fn add_left_mul_in_place_par(&self, lhs: &Tensor<[T]>, out: &mut Tensor<[T]>) {
         let nrows = self.num_rows();
         let ncols = self.num_cols();
-        let ncpus = nrows.min(rayon::current_num_threads());
 
-        // Split rows into ncpus chunks.
-        let chunk_size = nrows / ncpus;
-        let last_chunk_size = nrows % ncpus;
+        // Perform non-parallel multiply if there are too few rows.
+        if nrows < SMALLEST_CHUNK_SIZE {
+            return self.add_left_mul_in_place(lhs, out);
+        }
+
+        // Split rows into chunks.
+        let mut nchunks = rayon::current_num_threads();
+        let mut chunk_size = nrows / nchunks;
+        if chunk_size < SMALLEST_CHUNK_SIZE {
+            chunk_size = SMALLEST_CHUNK_SIZE.min(nrows);
+            nchunks = nrows / chunk_size;
+        }
+        let last_chunk_size = nrows % nchunks;
 
         assert_eq!(lhs.len(), nrows);
         assert_eq!(out.len(), ncols);
 
-        // Create ncpus (+1 for the last chunk) out_vectors to write to.
+        // Create nchunks (+1 for the last chunk) out_vectors to write to.
         let view = self.as_data().view();
-        let clumped =
-            Clumped::from_sizes_and_counts(vec![chunk_size, last_chunk_size], vec![ncpus, 1], view);
+        let clumped = Clumped::from_sizes_and_counts(
+            vec![chunk_size, last_chunk_size],
+            vec![nchunks, 1],
+            view,
+        );
 
-        let out_vecs: Vec<Vec<f64>> = clumped
+        let out_vecs: Vec<Vec<T>> = clumped
             .par_iter()
             .zip(lhs.data.par_chunks_exact(chunk_size))
             .fold(
-                || vec![0.0; ncols],
-                move |mut out, (m, lhs)| {
-                    for (row, lhs) in m.iter().zip(lhs.iter()) {
+                || vec![T::zero(); ncols],
+                |mut out, (m, lhs)| {
+                    for (row, &lhs) in m.iter().zip(lhs.iter()) {
                         for (col_idx, &val, _) in row.iter() {
                             out[col_idx] += val * lhs;
                         }
@@ -1340,12 +1354,12 @@ impl<'a> DSMatrixView<'_> {
             .collect();
 
         // Process the last chunk.
-        for (row, lhs) in clumped
+        for (row, &lhs) in clumped
             .iter()
-            .nth(ncpus)
+            .nth(nchunks)
             .unwrap()
             .iter()
-            .zip(lhs.data[chunk_size * ncpus..].iter())
+            .zip(lhs.data[chunk_size * nchunks..].iter())
         {
             for (col_idx, &val, _) in row.iter() {
                 out.as_mut_data()[col_idx] += val * lhs;
@@ -1358,7 +1372,7 @@ impl<'a> DSMatrixView<'_> {
     }
 
     /// Parallel version of `add_mul_in_place`.
-    pub fn add_mul_in_place_par(&self, rhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+    pub fn add_mul_in_place_par(&self, rhs: &Tensor<[T]>, out: &mut Tensor<[T]>) {
         assert_eq!(rhs.len(), self.num_cols());
         assert_eq!(out.len(), self.num_rows());
         let view = self.as_data();
@@ -1373,12 +1387,12 @@ impl<'a> DSMatrixView<'_> {
     }
 
     /// Adds the result of multiplying `self` by `lhs` on the left to `out`.
-    pub fn add_left_mul_in_place(&self, lhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+    pub fn add_left_mul_in_place(&self, lhs: &Tensor<[T]>, out: &mut Tensor<[T]>) {
         assert_eq!(lhs.len(), self.num_rows());
         assert_eq!(out.len(), self.num_cols());
         let view = self.as_data();
 
-        for (row, lhs) in view.iter().zip(lhs.data.iter()) {
+        for (row, &lhs) in view.iter().zip(lhs.data.iter()) {
             for (col_idx, &val, _) in row.iter() {
                 out.data[col_idx] += val * lhs;
             }
@@ -1386,7 +1400,7 @@ impl<'a> DSMatrixView<'_> {
     }
 
     /// Adds the result of multiplying `self` by `rhs` on the right to `out`.
-    pub fn add_mul_in_place(&self, rhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+    pub fn add_mul_in_place(&self, rhs: &Tensor<[T]>, out: &mut Tensor<[T]>) {
         assert_eq!(rhs.len(), self.num_cols());
         assert_eq!(out.len(), self.num_rows());
         let view = self.as_data();
@@ -1617,7 +1631,7 @@ mod tests {
         use rand::prelude::*;
         let range = Uniform::new(low, high);
         let mut v = vec![T::zero(); n];
-        v.par_chunks_mut(n / rayon::current_num_threads())
+        v.par_chunks_mut(1.max(n / rayon::current_num_threads()))
             .for_each_init(
                 || SeedableRng::from_seed([3; 32]),
                 |rng: &mut StdRng, chunk| {
@@ -1682,12 +1696,12 @@ mod tests {
 
         // Testing different sizes to make sure the chunking logic in
         // add_left_mul_in_place_par works.
-        for n in 10_000_000..10_000_001 {
-            for m in 10_000_000..10_000_001 {
-                let mat_data = random_vec(10 * n, -1.0, 1.0);
-                let mut mat_rows = random_vec(9 * n, 0, n);
+        for n in 1_000_000..1_000_001 {
+            for m in 1_000_000..1_000_001 {
+                let mat_data = random_vec(100 * n, -1.0, 1.0);
+                let mut mat_rows = random_vec(99 * n, 0, n);
                 mat_rows.extend(0..n);
-                let mat_cols = random_vec(10 * n, 0, m);
+                let mat_cols = random_vec(100 * n, 0, m);
                 let mat = DSMatrix::from_triplets_iter(
                     zip!(
                         mat_rows.into_iter(),
