@@ -4,12 +4,15 @@
 
 mod sprs_compat;
 mod ssblock;
-pub use sprs_compat::*;
 
-use super::*;
-use num_traits::{Float, Zero};
 use std::ops::{Add, Mul, MulAssign};
 
+use num_traits::{Float, Zero};
+use rayon::prelude::*;
+
+use super::*;
+
+pub use sprs_compat::*;
 pub use ssblock::*;
 
 type Dim = std::ops::RangeTo<usize>;
@@ -1279,13 +1282,111 @@ impl<'a> Mul<&'a Tensor<[f64]>> for DSMatrixView<'_> {
     type Output = Tensor<Vec<f64>>;
     fn mul(self, rhs: &'a Tensor<[f64]>) -> Self::Output {
         let mut res = vec![0.0; self.num_rows()].into_tensor();
-        self.mul_into(rhs, res.view_mut());
+        self.add_mul_in_place(rhs, res.view_mut());
+        res
+    }
+}
+
+impl<'a> Mul<&'a Tensor<[f64]>> for Transpose<DSMatrixView<'_>> {
+    type Output = Tensor<Vec<f64>>;
+    fn mul(self, rhs: &'a Tensor<[f64]>) -> Self::Output {
+        let mut res = vec![0.0; self.num_rows()].into_tensor();
+        assert_eq!(rhs.len(), self.num_cols());
+        assert_eq!(res.len(), self.num_rows());
+        let view = self.0.as_data();
+        for (row_idx, (row, out_row)) in view.iter().zip(res.data.iter_mut()).enumerate() {
+            let rhs_val = rhs.data[row_idx];
+            for (_, mat_entry, _) in row.iter() {
+                *out_row += *mat_entry * rhs_val;
+            }
+        }
         res
     }
 }
 
 impl<'a> DSMatrixView<'_> {
-    fn mul_into(&self, rhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+    /// Parallel version of `add_mul_in_place`.
+    pub fn add_left_mul_in_place_par(&self, lhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+        let nrows = self.num_rows();
+        let ncols = self.num_cols();
+        let ncpus = nrows.min(rayon::current_num_threads());
+
+        // Split rows into ncpus chunks.
+        let chunk_size = nrows / ncpus;
+        let last_chunk_size = nrows % ncpus;
+
+        assert_eq!(lhs.len(), nrows);
+        assert_eq!(out.len(), ncols);
+
+        // Create ncpus (+1 for the last chunk) out_vectors to write to.
+        let view = self.as_data().view();
+        let clumped =
+            Clumped::from_sizes_and_counts(vec![chunk_size, last_chunk_size], vec![ncpus, 1], view);
+
+        let out_vecs: Vec<Vec<f64>> = clumped
+            .par_iter()
+            .zip(lhs.data.par_chunks_exact(chunk_size))
+            .fold(
+                || vec![0.0; ncols],
+                move |mut out, (m, lhs)| {
+                    for (row, lhs) in m.iter().zip(lhs.iter()) {
+                        for (col_idx, &val, _) in row.iter() {
+                            out[col_idx] += val * lhs;
+                        }
+                    }
+                    out
+                },
+            )
+            .collect();
+
+        // Process the last chunk.
+        for (row, lhs) in clumped
+            .iter()
+            .nth(ncpus)
+            .unwrap()
+            .iter()
+            .zip(lhs.data[chunk_size * ncpus..].iter())
+        {
+            for (col_idx, &val, _) in row.iter() {
+                out.as_mut_data()[col_idx] += val * lhs;
+            }
+        }
+
+        for v in out_vecs.iter() {
+            *out += v.as_tensor();
+        }
+    }
+
+    /// Parallel version of `add_mul_in_place`.
+    pub fn add_mul_in_place_par(&self, rhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+        assert_eq!(rhs.len(), self.num_cols());
+        assert_eq!(out.len(), self.num_rows());
+        let view = self.as_data();
+
+        view.par_iter()
+            .zip(out.data.par_iter_mut())
+            .for_each(move |(row, out)| {
+                row.iter().for_each(move |(col_idx, entry, _)| {
+                    *out += *entry * rhs.data[col_idx];
+                })
+            });
+    }
+
+    /// Adds the result of multiplying `self` by `lhs` on the left to `out`.
+    pub fn add_left_mul_in_place(&self, lhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
+        assert_eq!(lhs.len(), self.num_rows());
+        assert_eq!(out.len(), self.num_cols());
+        let view = self.as_data();
+
+        for (row, lhs) in view.iter().zip(lhs.data.iter()) {
+            for (col_idx, &val, _) in row.iter() {
+                out.data[col_idx] += val * lhs;
+            }
+        }
+    }
+
+    /// Adds the result of multiplying `self` by `rhs` on the right to `out`.
+    pub fn add_mul_in_place(&self, rhs: &Tensor<[f64]>, out: &mut Tensor<[f64]>) {
         assert_eq!(rhs.len(), self.num_cols());
         assert_eq!(out.len(), self.num_rows());
         let view = self.as_data();
@@ -1504,6 +1605,225 @@ impl<M: Viewed> Viewed for Transpose<M> {}
 mod tests {
     use super::*;
     use approx::*;
+
+    /// Generate a random vector of float values between -1 and 1.
+    pub fn random_vec<T>(n: usize, low: T, high: T) -> Vec<T>
+    where
+        T: Send + Sync + num_traits::Zero + Clone + rand::distributions::uniform::SampleUniform,
+        T::Sampler: Sync,
+        rand::distributions::Uniform<T>: Copy,
+    {
+        use rand::distributions::Uniform;
+        use rand::prelude::*;
+        let range = Uniform::new(low, high);
+        let mut v = vec![T::zero(); n];
+        v.par_chunks_mut(n / rayon::current_num_threads())
+            .for_each_init(
+                || SeedableRng::from_seed([3; 32]),
+                |rng: &mut StdRng, chunk| {
+                    for c in chunk.iter_mut() {
+                        *c = rng.sample(range);
+                    }
+                },
+            );
+        v
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn add_mul_in_place_par_stress() {
+        let mut seq_t = std::time::Duration::new(0, 0);
+        let mut par_t = std::time::Duration::new(0, 0);
+
+        // Testing different sizes to make sure the chunking logic in
+        // add_mul_in_place_par works.
+        for n in 1_000_000..1_000_001 {
+            for m in 1_000_000..1_000_001 {
+                let mat_data = random_vec(100 * n, -1.0, 1.0);
+                let mut mat_rows = random_vec(99 * n, 0, n);
+                mat_rows.extend(0..n);
+                let mat_cols = random_vec(100 * n, 0, m);
+                let mat = DSMatrix::from_triplets_iter(
+                    zip!(
+                        mat_rows.into_iter(),
+                        mat_cols.into_iter(),
+                        mat_data.into_iter(),
+                    ),
+                    n,
+                    m,
+                );
+                let rhs = random_vec(m, -1.0, 1.0);
+                let mut out = vec![0.0; n];
+                let mut out_par = vec![0.0; n];
+                let par_now = std::time::Instant::now();
+                mat.view()
+                    .add_mul_in_place_par(rhs.as_tensor(), out_par.as_mut_tensor());
+                par_t += par_now.elapsed();
+                let seq_now = std::time::Instant::now();
+                mat.view()
+                    .add_mul_in_place(rhs.as_tensor(), out.as_mut_tensor());
+                seq_t += seq_now.elapsed();
+                assert!(out
+                    .iter()
+                    .zip(out_par.iter())
+                    .all(|(&a, &b)| (a - b).abs() < 1e-8));
+            }
+        }
+        std::dbg!(seq_t);
+        std::dbg!(par_t);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn add_left_mul_in_place_par_stress() {
+        let mut seq_t = std::time::Duration::new(0, 0);
+        let mut par_t = std::time::Duration::new(0, 0);
+        rayon::ThreadPoolBuilder::new().build_global().unwrap();
+
+        // Testing different sizes to make sure the chunking logic in
+        // add_left_mul_in_place_par works.
+        for n in 10_000_000..10_000_001 {
+            for m in 10_000_000..10_000_001 {
+                let mat_data = random_vec(10 * n, -1.0, 1.0);
+                let mut mat_rows = random_vec(9 * n, 0, n);
+                mat_rows.extend(0..n);
+                let mat_cols = random_vec(10 * n, 0, m);
+                let mat = DSMatrix::from_triplets_iter(
+                    zip!(
+                        mat_rows.into_iter(),
+                        mat_cols.into_iter(),
+                        mat_data.into_iter(),
+                    ),
+                    n,
+                    m,
+                );
+                let lhs = random_vec(n, -1.0, 1.0);
+                let mut out = vec![0.0; m];
+                let mut out_par = vec![0.0; m];
+                let par_now = std::time::Instant::now();
+                mat.view()
+                    .add_left_mul_in_place_par(lhs.as_tensor(), out_par.as_mut_tensor());
+                par_t += par_now.elapsed();
+                let seq_now = std::time::Instant::now();
+                mat.view()
+                    .add_left_mul_in_place(lhs.as_tensor(), out.as_mut_tensor());
+                seq_t += seq_now.elapsed();
+                assert!(out
+                    .iter()
+                    .zip(out_par.iter())
+                    .all(|(&a, &b)| (a - b).abs() < 1e-8));
+            }
+        }
+        std::dbg!(seq_t);
+        std::dbg!(par_t);
+    }
+    #[test]
+    fn add_left_mul_in_place_par() {
+        // Build a 3x3 sparse matrix.
+        // [1.0 2.0  . ]
+        // [ .   .  3.0]
+        // [ .   .  4.0]
+        let mat_data = vec![1.0, 2.0, 3.0, 4.0];
+        let mat_rows = vec![0, 0, 1, 2];
+        let mat_cols = vec![0, 1, 2, 2];
+        let mat = DSMatrix::from_triplets_iter(
+            zip!(
+                mat_rows.into_iter(),
+                mat_cols.into_iter(),
+                mat_data.into_iter(),
+            ),
+            3,
+            3,
+        );
+        // Build left-hand-side vector.
+        let lhs = vec![1.0, 2.0, 3.0];
+        // Result should be [1.0, 2.0, 18.0]
+        let expected = vec![1.0, 2.0, 18.0];
+        let mut out = vec![0.0; 3];
+        let mut out_par = vec![0.0; 3];
+        mat.view()
+            .add_left_mul_in_place(lhs.as_tensor(), out.as_mut_tensor());
+        mat.view()
+            .add_left_mul_in_place_par(lhs.as_tensor(), out_par.as_mut_tensor());
+        assert!(
+            out.iter()
+                .zip(out_par.iter())
+                .zip(expected.iter())
+                .all(|((&a, &b), &expected)| a == expected && b == expected),
+            "{:?} {:?}",
+            &out,
+            &out_par
+        );
+
+        // Testing different sizes to make sure the chunking logic in
+        // add_left_mul_in_place_par works.
+        for n in 10..50 {
+            for m in 10..50 {
+                let mat_data = random_vec(5 * n, -1.0, 1.0);
+                let mut mat_rows = random_vec(4 * n, 0, n);
+                mat_rows.extend(0..n);
+                let mat_cols = random_vec(5 * n, 0, m);
+                let mat = DSMatrix::from_triplets_iter(
+                    zip!(
+                        mat_rows.into_iter(),
+                        mat_cols.into_iter(),
+                        mat_data.into_iter(),
+                    ),
+                    n,
+                    m,
+                );
+                let lhs = random_vec(n, -1.0, 1.0);
+                let mut out = vec![0.0; m];
+                let mut out_par = vec![0.0; m];
+                mat.view()
+                    .add_left_mul_in_place(lhs.as_tensor(), out.as_mut_tensor());
+                mat.view()
+                    .add_left_mul_in_place_par(lhs.as_tensor(), out_par.as_mut_tensor());
+                assert!(
+                    out.iter()
+                        .zip(out_par.iter())
+                        .all(|(&a, &b)| (a - b).abs() < 1e-2),
+                    "{:?} {:?}",
+                    &out,
+                    &out_par
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn add_mul_in_place_par() {
+        // Testing different sizes to make sure the chunking logic in
+        // add_mul_in_place_par works.
+        for n in 10..50 {
+            for m in 10..50 {
+                let mat_data = random_vec(5 * n, -1.0, 1.0);
+                let mut mat_rows = random_vec(4 * n, 0, n);
+                mat_rows.extend(0..n);
+                let mat_cols = random_vec(5 * n, 0, m);
+                let mat = DSMatrix::from_triplets_iter(
+                    zip!(
+                        mat_rows.into_iter(),
+                        mat_cols.into_iter(),
+                        mat_data.into_iter(),
+                    ),
+                    n,
+                    m,
+                );
+                let rhs = random_vec(m, -1.0, 1.0);
+                let mut out = vec![0.0; n];
+                let mut out_par = vec![0.0; n];
+                mat.view()
+                    .add_mul_in_place(rhs.as_tensor(), out.as_mut_tensor());
+                mat.view()
+                    .add_mul_in_place_par(rhs.as_tensor(), out_par.as_mut_tensor());
+                assert!(out
+                    .iter()
+                    .zip(out_par.iter())
+                    .all(|(&a, &b)| (a - b).abs() < 1e-8));
+            }
+        }
+    }
 
     #[test]
     fn sparse_sparse_mul_diag() {

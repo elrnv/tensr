@@ -24,6 +24,7 @@ typenum = "1.12"
 autodiff = { version = "0.3", optional = true, features = ["bytemuck"] }
 packed_simd_2 = { version = "0.3", optional = true }
 approx = { version = "0.4", optional = true }
+#pardiso = { version = "0.1", optional = true }
 
 [dev-dependencies]
 cgmath = "0.18"
