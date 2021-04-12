@@ -79,7 +79,6 @@ fn vector_vector_add_benchmark(c: &mut Criterion) {
                 )
             },
         );
-
         group.bench_with_input(
             BenchmarkId::new("Lazy Expr Assign", n),
             &(&a, &b),

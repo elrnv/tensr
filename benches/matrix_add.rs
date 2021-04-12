@@ -24,12 +24,12 @@ pub fn manual(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
             out.push(a + b);
         }
     }
-    ChunkedN::from_flat_with_stride(out, a.len())
+    ChunkedN::from_flat_with_stride(a.len(), out)
 }
 
 pub fn manual_init(a: ChunkedN<&[f64]>, b: ChunkedN<&[f64]>) -> ChunkedN<Vec<f64>> {
     let mut out =
-        ChunkedN::from_flat_with_stride(vec![0.0; a.view().into_storage().len()], a.len());
+        ChunkedN::from_flat_with_stride(a.len(), vec![0.0; a.view().into_storage().len()]);
     for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
         for ((a, b), out) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
             *out = a + b;
@@ -51,8 +51,8 @@ fn matrix_matrix_add_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Matrix Matrix Add");
 
     for &n in &[100, 250, 500, 750, 1000, 2500, 5000] {
-        let a = ChunkedN::from_flat_with_stride(random_vec(n * n), n);
-        let b = ChunkedN::from_flat_with_stride(random_vec(n * n), n);
+        let a = ChunkedN::from_flat_with_stride(n, random_vec(n * n));
+        let b = ChunkedN::from_flat_with_stride(n, random_vec(n * n));
 
         group.bench_with_input(
             BenchmarkId::new("Lazy Expr", n),

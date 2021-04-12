@@ -29,8 +29,8 @@ pub fn outer_write_local(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
 pub fn lazy_expr4(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
     let n = v.len() / 4;
     let m4 = ChunkedN::from_flat_with_stride(
-        Chunked4::from_flat(Chunked4::from_flat(m.into_storage())),
         n,
+        Chunked4::from_flat(Chunked4::from_flat(m.into_storage())),
     );
     let v4 = Chunked4::from_flat(v);
     let mut out4 = Chunked4::from_flat(vec![0.0; v.len()]);
@@ -191,8 +191,8 @@ pub fn inner_par_chunked(m: ChunkedN<&[f64]>, v: &[f64]) -> Vec<f64> {
 fn matrix_vector_mul_order_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Matrix Vector Multiply Order");
 
-    for &n in &[100, 200, 400, 800, 1600, 3200 /*, 5000, 7500, 10000*/] {
-        let mut m = ChunkedN::from_flat_with_stride(random_vec(n * n), n);
+    for &n in &[/*100, 200, 400, 800, 1600,*/ 3200, 5000, 7500, 10000] {
+        let mut m = ChunkedN::from_flat_with_stride(n, random_vec(n * n));
         let v = random_vec(n);
         // symmetrize matrix to make consistent results
         for i in 0..n {
@@ -241,45 +241,47 @@ fn matrix_vector_mul_order_benchmark(c: &mut Criterion) {
         //        });
         //}
 
-        group.bench_with_input(BenchmarkId::new("Lazy Expr", n), &(&m, &v), |b, (m, v)| {
-            b.iter_batched(
-                || (m.view(), v.view()),
-                |(m, v)| lazy_expr(m, v),
-                BatchSize::LargeInput,
-            )
-        });
-
-        group.bench_with_input(
-            BenchmarkId::new("Lazy Expr Blocks", n),
-            &(&m, &v),
-            |b, (m, v)| {
+        if n < 5000 {
+            group.bench_with_input(BenchmarkId::new("Lazy Expr", n), &(&m, &v), |b, (m, v)| {
                 b.iter_batched(
                     || (m.view(), v.view()),
-                    |(m, v)| lazy_expr4(m, v),
+                    |(m, v)| lazy_expr(m, v),
                     BatchSize::LargeInput,
                 )
-            },
-        );
+            });
 
-        group.bench_with_input(
-            BenchmarkId::new("Outer Read Local", n),
-            &(&m, &v),
-            |b, (m, v)| {
+            group.bench_with_input(
+                BenchmarkId::new("Lazy Expr Blocks", n),
+                &(&m, &v),
+                |b, (m, v)| {
+                    b.iter_batched(
+                        || (m.view(), v.view()),
+                        |(m, v)| lazy_expr4(m, v),
+                        BatchSize::LargeInput,
+                    )
+                },
+            );
+
+            group.bench_with_input(
+                BenchmarkId::new("Outer Read Local", n),
+                &(&m, &v),
+                |b, (m, v)| {
+                    b.iter_batched(
+                        || (m.view(), v.view()),
+                        |(m, v)| outer_read_local(m, v),
+                        BatchSize::LargeInput,
+                    )
+                },
+            );
+
+            group.bench_with_input(BenchmarkId::new("Inner", n), &(&m, &v), |b, (m, v)| {
                 b.iter_batched(
                     || (m.view(), v.view()),
-                    |(m, v)| outer_read_local(m, v),
+                    |(m, v)| inner(m, v),
                     BatchSize::LargeInput,
                 )
-            },
-        );
-
-        group.bench_with_input(BenchmarkId::new("Inner", n), &(&m, &v), |b, (m, v)| {
-            b.iter_batched(
-                || (m.view(), v.view()),
-                |(m, v)| inner(m, v),
-                BatchSize::LargeInput,
-            )
-        });
+            });
+        }
 
         group.bench_with_input(
             BenchmarkId::new("Outer Read Local Parallel", n),
@@ -325,13 +327,19 @@ fn matrix_vector_mul_order_benchmark(c: &mut Criterion) {
                 inner_par(m.view(), v.view()),
                 inner_outer_simd(m.view(), v.view()),
             );
-            group.bench_with_input(BenchmarkId::new("Inner SIMD", n), &(&m, &v), |b, (m, v)| {
-                b.iter_batched(
-                    || (m.view(), v.view()),
-                    |(m, v)| inner_simd(m, v),
-                    BatchSize::LargeInput,
-                )
-            });
+            if n < 5000 {
+                group.bench_with_input(
+                    BenchmarkId::new("Inner SIMD", n),
+                    &(&m, &v),
+                    |b, (m, v)| {
+                        b.iter_batched(
+                            || (m.view(), v.view()),
+                            |(m, v)| inner_simd(m, v),
+                            BatchSize::LargeInput,
+                        )
+                    },
+                );
+            }
             group.bench_with_input(
                 BenchmarkId::new("Inner Outer SIMD", n),
                 &(&m, &v),
