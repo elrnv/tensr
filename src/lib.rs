@@ -1581,8 +1581,8 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 mod autodiff_impls {
     use super::*;
     use autodiff::F;
-    impl<T: NonTensor> NonTensor for F<T> {}
-    impl<T> Scalar for F<T> where
+    impl<V: NonTensor, D> NonTensor for F<V, D> {}
+    impl<V, D> Scalar for F<V, D> where
         Self: Pod
             + Flat
             + fmt::Debug
@@ -1594,47 +1594,46 @@ mod autodiff_impls {
             + IntoTensor<Tensor = Tensor<Self>>
     {
     }
-    impl<T: Flat> Flat for F<T> {}
+    impl<V: Flat, D> Flat for F<V, D> {}
     //impl Dummy for F {
     //    unsafe fn dummy() -> Self {
     //        Self::default()
     //    }
     //}
-    impl<T: NonTensor> IntoTensor for F<T> {
-        type Tensor = Tensor<F<T>>;
+    impl<V, D> IntoTensor for F<V, D> {
+        type Tensor = Tensor<F<V, D>>;
         #[inline]
         fn into_tensor(self) -> Self::Tensor {
             Tensor { data: self }
         }
     }
 
-    impl<T: NonTensor> IntoExpr for F<T> {
-        type Expr = Tensor<F<T>>;
+    impl<V, D> IntoExpr for F<V, D> {
+        type Expr = Tensor<F<V, D>>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: self }
         }
     }
 
-    impl<T> IntoExpr for &F<T>
+    impl<V, D> IntoExpr for &F<V, D>
     where
-        T: NonTensor,
-        F<T>: Copy,
+        F<V, D>: Copy,
     {
-        type Expr = Tensor<F<T>>;
+        type Expr = Tensor<F<V, D>>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: *self }
         }
     }
-    impl<'a, T> IntoExpr for &'a mut F<T>
+    impl<'a, V, D> IntoExpr for &'a mut F<V, D>
     where
-        F<T>: Scalar,
+        F<V, D>: Scalar,
     {
-        type Expr = &'a mut Tensor<F<T>>;
+        type Expr = &'a mut Tensor<F<V, D>>;
         fn into_expr(self) -> Self::Expr {
             self.as_mut_tensor()
         }
     }
-    impl<T> DotOp for F<T>
+    impl<V, D> DotOp for F<V, D>
     where
         Self: Mul<Output = Self>,
     {
