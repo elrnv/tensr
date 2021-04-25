@@ -1580,43 +1580,64 @@ impl_scalar!(f64, f32, usize, u64, u32, u16, u8, i64, i32, i16, i8);
 #[cfg(feature = "autodiff")]
 mod autodiff_impls {
     use super::*;
-    use autodiff::F1;
-    impl NonTensor for F1 {}
-    impl Scalar for F1 {}
-    impl Flat for F1 {}
+    use autodiff::F;
+    impl<T: NonTensor> NonTensor for F<T> {}
+    impl<T> Scalar for F<T> where
+        Self: Pod
+            + Flat
+            + fmt::Debug
+            + PartialOrd
+            + num_traits::NumCast
+            + num_traits::NumAssign
+            + num_traits::FromPrimitive
+            + std::iter::Sum
+            + IntoTensor<Tensor = Tensor<Self>>
+    {
+    }
+    impl<T: Flat> Flat for F<T> {}
     //impl Dummy for F {
     //    unsafe fn dummy() -> Self {
     //        Self::default()
     //    }
     //}
-    impl IntoTensor for F1 {
-        type Tensor = Tensor<F1>;
+    impl<T: NonTensor> IntoTensor for F<T> {
+        type Tensor = Tensor<F<T>>;
         #[inline]
         fn into_tensor(self) -> Self::Tensor {
             Tensor { data: self }
         }
     }
 
-    impl IntoExpr for F1 {
-        type Expr = Tensor<F1>;
+    impl<T: NonTensor> IntoExpr for F<T> {
+        type Expr = Tensor<F<T>>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: self }
         }
     }
 
-    impl IntoExpr for &F1 {
-        type Expr = Tensor<F1>;
+    impl<T> IntoExpr for &F<T>
+    where
+        T: NonTensor,
+        F<T>: Copy,
+    {
+        type Expr = Tensor<F<T>>;
         fn into_expr(self) -> Self::Expr {
             Tensor { data: *self }
         }
     }
-    impl<'a> IntoExpr for &'a mut F1 {
-        type Expr = &'a mut Tensor<F1>;
+    impl<'a, T> IntoExpr for &'a mut F<T>
+    where
+        F<T>: Scalar,
+    {
+        type Expr = &'a mut Tensor<F<T>>;
         fn into_expr(self) -> Self::Expr {
             self.as_mut_tensor()
         }
     }
-    impl DotOp for F1 {
+    impl<T> DotOp for F<T>
+    where
+        Self: Mul<Output = Self>,
+    {
         type Output = Tensor<Self>;
         fn dot_op(self, rhs: Self) -> Self::Output {
             Tensor { data: self * rhs }
