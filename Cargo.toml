@@ -21,8 +21,7 @@ unroll = "0.1"
 num-traits = "0.2"
 rayon = "1.5"
 typenum = "1.12"
-#autodiff = { version = "0.3", optional = true, features = ["bytemuck"] }
-autodiff = { path = "../autodiff", version = "0.3", optional = true, features = ["bytemuck"] }
+autodiff = { version = "0.3", optional = true, features = ["bytemuck"] }
 packed_simd_2 = { version = "0.3", optional = true }
 approx = { version = "0.4", optional = true }
 #pardiso = { version = "0.1", optional = true }
