@@ -5,15 +5,15 @@
 use super::*;
 use std::convert::AsRef;
 
-impl<S, I> Into<sprs::CsMat<f64>> for DSBlockMatrixBase<S, I, U3, U3>
+impl<T: Scalar, S, I> Into<sprs::CsMat<T>> for DSBlockMatrixBase<S, I, U3, U3>
 where
     // Needed for num_cols/num_rows
     S: Set,
     I: Set + AsRef<[usize]>,
     // Needed for view
-    Self: for<'a> View<'a, Type = DSBlockMatrix3View<'a>>,
+    Self: for<'a> View<'a, Type = DSBlockMatrix3View<'a, T>>,
 {
-    fn into(self) -> sprs::CsMat<f64> {
+    fn into(self) -> sprs::CsMat<T> {
         let view = self.view();
         let num_rows = view.num_total_rows();
         let num_cols = view.num_total_cols();
