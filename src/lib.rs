@@ -3020,7 +3020,7 @@ where
                 .atom_iter()
                 .map(|&x| x.abs().powi(p))
                 .sum::<T>()
-                .powf(T::one() / T::from_i32(p).expect("Failed to convert integer to flaot type.")),
+                .powf(T::one() / T::from_i32(p).expect("Failed to convert integer to float type.")),
             LpNorm::Inf => self
                 .data
                 .atom_iter()
