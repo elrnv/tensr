@@ -1100,8 +1100,8 @@ impl<'a, T: Scalar, I: Set + AsIndexSlice> DSBlockMatrix3<T, I> {
     }
 }
 
-impl From<DBlockMatrix3> for DSBlockMatrix3 {
-    fn from(dense: DBlockMatrix3) -> DSBlockMatrix3 {
+impl<T: Scalar> From<DBlockMatrix3<T>> for DSBlockMatrix3<T> {
+    fn from(dense: DBlockMatrix3<T>) -> DSBlockMatrix3<T> {
         let num_rows = dense.num_rows();
         let num_cols = dense.num_cols();
         Chunked::from_sizes(
@@ -1140,9 +1140,9 @@ impl<I: AsRef<[usize]>> From<DiagonalBlockMatrix3<f64, I>> for DSBlockMatrix3 {
     }
 }
 
-impl From<DiagonalMatrix> for DSMatrix {
-    fn from(diag: DiagonalMatrix) -> DSMatrix {
-        let mut out_data = vec![0.0; diag.0.len()];
+impl<T: Scalar> From<DiagonalMatrix<T>> for DSMatrix<T> {
+    fn from(diag: DiagonalMatrix<T>) -> DSMatrix<T> {
+        let mut out_data = vec![T::zero(); diag.0.len()];
         Subset::clone_into_other(&diag.0.view(), &mut out_data);
 
         let num_cols = diag.num_cols();
@@ -1158,9 +1158,10 @@ impl From<DiagonalMatrix> for DSMatrix {
     }
 }
 
-impl From<BlockDiagonalMatrix2> for DSBlockMatrix2 {
-    fn from(diag: BlockDiagonalMatrix2) -> DSBlockMatrix2 {
-        let mut out_data = Chunked2::from_flat(Chunked2::from_flat(vec![0.0; diag.0.len() * 4]));
+impl<T: Scalar> From<BlockDiagonalMatrix2<T>> for DSBlockMatrix2<T> {
+    fn from(diag: BlockDiagonalMatrix2<T>) -> DSBlockMatrix2<T> {
+        let mut out_data =
+            Chunked2::from_flat(Chunked2::from_flat(vec![T::zero(); diag.0.len() * 4]));
         Subset::clone_into_other(&diag.0.view(), &mut out_data);
 
         let num_cols = diag.num_cols();
@@ -1211,16 +1212,19 @@ where
 }
 */
 
-impl<'a> DSBlockMatrix3View<'a> {
+impl<'a, T: Scalar> DSBlockMatrix3View<'a, T> {
     /// A special congruence tranform of the form `A -> P^T A P` where `P` is a block diagonal matrix.
     /// This is useful for instance as a change of basis transformation.
-    pub fn diagonal_congruence_transform(self, p: BlockDiagonalMatrix3x2View) -> DSBlockMatrix2 {
+    pub fn diagonal_congruence_transform(
+        self,
+        p: BlockDiagonalMatrix3x2View<T>,
+    ) -> DSBlockMatrix2<T> {
         let mut out = Chunked::from_offsets(
             (*self.as_data().offsets()).into_owned().into_inner(),
             Sparse::new(
                 self.as_data().data().selection().clone().into_owned(),
                 Chunked2::from_flat(Chunked2::from_flat(vec![
-                    0.0;
+                    T::zero();
                     self.num_non_zero_blocks() * 4
                 ])),
             ),
@@ -1247,15 +1251,15 @@ impl<'a> DSBlockMatrix3View<'a> {
     }
 }
 
-impl<'a> DSBlockMatrix3View<'a> {
+impl<'a, T: Scalar> DSBlockMatrix3View<'a, T> {
     /// A special congruence tranform of the form `A -> P^T A P` where `P` is a block diagonal matrix.
     /// This is useful for instance as a change of basis transformation.
-    pub fn diagonal_congruence_transform3x1(self, p: BlockDiagonalMatrix3x1View) -> DSMatrix {
+    pub fn diagonal_congruence_transform3x1(self, p: BlockDiagonalMatrix3x1View<T>) -> DSMatrix<T> {
         let mut out = Chunked::from_offsets(
             (*self.as_data().offsets()).into_owned().into_inner(),
             Sparse::new(
                 self.as_data().data().selection().clone().into_owned(),
-                vec![0.0; self.num_non_zero_blocks()],
+                vec![T::zero(); self.num_non_zero_blocks()],
             ),
         );
 
@@ -1278,19 +1282,19 @@ impl<'a> DSBlockMatrix3View<'a> {
     }
 }
 
-impl<'a> Mul<&'a Tensor<[f64]>> for DSMatrixView<'_> {
-    type Output = Tensor<Vec<f64>>;
-    fn mul(self, rhs: &'a Tensor<[f64]>) -> Self::Output {
-        let mut res = vec![0.0; self.num_rows()].into_tensor();
+impl<'a, T: Scalar> Mul<&'a Tensor<[T]>> for DSMatrixView<'_, T> {
+    type Output = Tensor<Vec<T>>;
+    fn mul(self, rhs: &'a Tensor<[T]>) -> Self::Output {
+        let mut res = vec![T::zero(); self.num_rows()].into_tensor();
         self.add_mul_in_place(rhs, res.view_mut());
         res
     }
 }
 
-impl<'a> Mul<&'a Tensor<[f64]>> for Transpose<DSMatrixView<'_>> {
-    type Output = Tensor<Vec<f64>>;
-    fn mul(self, rhs: &'a Tensor<[f64]>) -> Self::Output {
-        let mut res = vec![0.0; self.num_rows()].into_tensor();
+impl<'a, T: Scalar> Mul<&'a Tensor<[T]>> for Transpose<DSMatrixView<'_, T>> {
+    type Output = Tensor<Vec<T>>;
+    fn mul(self, rhs: &'a Tensor<[T]>) -> Self::Output {
+        let mut res = vec![T::zero(); self.num_rows()].into_tensor();
         assert_eq!(rhs.len(), self.num_cols());
         assert_eq!(res.len(), self.num_rows());
         let view = self.0.as_data();
@@ -1413,13 +1417,13 @@ impl<'a, T: Scalar> DSMatrixView<'_, T> {
     }
 }
 
-impl<'a> Mul<Tensor<Chunked3<&'a Tensor<[f64]>>>> for DSBlockMatrix3View<'_> {
-    type Output = Tensor<Chunked3<Tensor<Vec<f64>>>>;
-    fn mul(self, rhs: Tensor<Chunked3<&'a Tensor<[f64]>>>) -> Self::Output {
+impl<'a, T: Scalar> Mul<Tensor<Chunked3<&'a Tensor<[T]>>>> for DSBlockMatrix3View<'_, T> {
+    type Output = Tensor<Chunked3<Tensor<Vec<T>>>>;
+    fn mul(self, rhs: Tensor<Chunked3<&'a Tensor<[T]>>>) -> Self::Output {
         let rhs = rhs.as_data();
         assert_eq!(rhs.len(), self.num_cols());
 
-        let mut res = Chunked3::from_array_vec(vec![[0.0; 3]; self.num_rows()]);
+        let mut res = Chunked3::from_array_vec(vec![[T::zero(); 3]; self.num_rows()]);
         for (row, out_row) in self.as_data().iter().zip(res.iter_mut()) {
             for (col_idx, block, _) in row.iter() {
                 *out_row.as_mut_tensor() +=
@@ -1430,9 +1434,9 @@ impl<'a> Mul<Tensor<Chunked3<&'a Tensor<[f64]>>>> for DSBlockMatrix3View<'_> {
     }
 }
 
-impl Mul<DSBlockMatrix1x3View<'_>> for DSMatrixView<'_> {
-    type Output = DSBlockMatrix1x3;
-    fn mul(self, rhs: DSBlockMatrix1x3View<'_>) -> Self::Output {
+impl Mul<DSBlockMatrix1x3View<'_, f64>> for DSMatrixView<'_, f64> {
+    type Output = DSBlockMatrix1x3<f64>;
+    fn mul(self, rhs: DSBlockMatrix1x3View<'_, f64>) -> Self::Output {
         let mut blocks = Chunked1::from_flat(Chunked3::from_flat(Vec::new()));
         let mut offsets = vec![0];
         offsets.reserve(self.data.len());
@@ -1445,7 +1449,10 @@ impl Mul<DSBlockMatrix1x3View<'_>> for DSMatrixView<'_> {
 
             // Write out block sums into a dense vector of blocks
             if let Some(next) = out_expr.next() {
-                workspace_blocks.resize(next.expr.target_size(), Matrix1x3::new([[0.0; 3]; 1]));
+                workspace_blocks.resize(
+                    next.expr.target_size(),
+                    Matrix1x3::new([[f64::zero(); 3]; 1]),
+                );
                 for elem in next.expr {
                     workspace_blocks[elem.index] += elem.expr;
                 }
@@ -1463,7 +1470,10 @@ impl Mul<DSBlockMatrix1x3View<'_>> for DSMatrixView<'_> {
                 .filter(|(_, b)| !b.is_zero())
             {
                 indices.push(i);
-                blocks.eval_extend(std::mem::replace(block, Matrix1x3::new([[0.0; 3]; 1])));
+                blocks.eval_extend(std::mem::replace(
+                    block,
+                    Matrix1x3::new([[f64::zero(); 3]; 1]),
+                ));
             }
 
             offsets.push(blocks.len());
@@ -1473,17 +1483,17 @@ impl Mul<DSBlockMatrix1x3View<'_>> for DSMatrixView<'_> {
     }
 }
 
-impl<'a, Rhs> Mul<Rhs> for DSBlockMatrix1x3View<'_>
+impl<'a, Rhs, T: Scalar> Mul<Rhs> for DSBlockMatrix1x3View<'_, T>
 where
-    Rhs: Into<Tensor<SubsetView<'a, Tensor<Chunked3<&'a Tensor<[f64]>>>>>>,
+    Rhs: Into<Tensor<SubsetView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>>,
 {
-    type Output = Tensor<Vec<f64>>;
+    type Output = Tensor<Vec<T>>;
     fn mul(self, rhs: Rhs) -> Self::Output {
         let rhs = rhs.into();
         let rhs_data = rhs.into_data();
         assert_eq!(rhs_data.len(), self.num_cols());
 
-        let mut res = vec![0.0; self.num_rows()];
+        let mut res = vec![T::zero(); self.num_rows()];
         for (row, out_row) in self.as_data().iter().zip(res.iter_mut()) {
             for (col_idx, block, _) in row.iter() {
                 *out_row.as_mut_tensor() +=
@@ -1494,9 +1504,9 @@ where
     }
 }
 
-impl Mul<Tensor<Chunked3<&Tensor<[f64]>>>> for DiagonalBlockMatrix3View<'_> {
-    type Output = Tensor<Chunked3<Tensor<Vec<f64>>>>;
-    fn mul(self, other: Tensor<Chunked3<&Tensor<[f64]>>>) -> Self::Output {
+impl<T: Scalar> Mul<Tensor<Chunked3<&Tensor<[T]>>>> for DiagonalBlockMatrix3View<'_, T> {
+    type Output = Tensor<Chunked3<Tensor<Vec<T>>>>;
+    fn mul(self, other: Tensor<Chunked3<&Tensor<[T]>>>) -> Self::Output {
         let mut out = other.into_data().into_owned();
         for (&b, out) in self.0.iter().zip(out.iter_mut()) {
             for j in 0..3 {
@@ -1507,9 +1517,9 @@ impl Mul<Tensor<Chunked3<&Tensor<[f64]>>>> for DiagonalBlockMatrix3View<'_> {
     }
 }
 
-impl Mul<Tensor<Chunked3<&Tensor<[f64]>>>> for DiagonalBlockMatrix3<f64> {
-    type Output = Tensor<Chunked3<Tensor<Vec<f64>>>>;
-    fn mul(self, other: Tensor<Chunked3<&Tensor<[f64]>>>) -> Self::Output {
+impl<T: Scalar> Mul<Tensor<Chunked3<&Tensor<[T]>>>> for DiagonalBlockMatrix3<T> {
+    type Output = Tensor<Chunked3<Tensor<Vec<T>>>>;
+    fn mul(self, other: Tensor<Chunked3<&Tensor<[T]>>>) -> Self::Output {
         let mut out = other.into_data().into_owned();
         for (&b, out) in self.0.iter().zip(out.iter_mut()) {
             for j in 0..3 {
@@ -1520,17 +1530,17 @@ impl Mul<Tensor<Chunked3<&Tensor<[f64]>>>> for DiagonalBlockMatrix3<f64> {
     }
 }
 
-impl<'a, Rhs> Mul<Rhs> for Transpose<BlockDiagonalMatrix3x1View<'a>>
+impl<'a, Rhs, T: Scalar> Mul<Rhs> for Transpose<BlockDiagonalMatrix3x1View<'a, T>>
 where
-    Rhs: Into<Tensor<SubsetView<'a, Tensor<Chunked3<&'a Tensor<[f64]>>>>>>,
+    Rhs: Into<Tensor<SubsetView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>>,
 {
-    type Output = Tensor<Vec<f64>>;
+    type Output = Tensor<Vec<T>>;
     fn mul(self, rhs: Rhs) -> Self::Output {
         let rhs = rhs.into();
         let rhs_data = rhs.as_data();
         assert_eq!(rhs_data.len(), self.0.num_rows());
 
-        let mut res = vec![0.0; self.0.num_cols()];
+        let mut res = vec![T::zero(); self.0.num_cols()];
         for (idx, block) in (self.0).0.iter().enumerate() {
             res[idx] +=
                 ((*block.into_arrays().as_tensor()).transpose() * Vector3::new(rhs_data[idx]))[0];
