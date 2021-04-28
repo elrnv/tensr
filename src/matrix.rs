@@ -581,23 +581,23 @@ where
 
 impl<S: Viewed, I, N> Viewed for DiagonalBlockMatrixBase<S, I, N> {}
 
-impl<'a, S: Set + View<'a, Type = &'a [f64]>, I: AsRef<[usize]>, N: Copy> View<'a>
+impl<'a, T: 'a, S: Set + View<'a, Type = &'a [T]>, I: AsRef<[usize]>, N: Copy> View<'a>
     for DiagonalBlockMatrixBase<S, I, N>
 where
     UniChunked<S, N>: Set,
 {
-    type Type = DiagonalBlockMatrixView<'a, f64, N>;
+    type Type = DiagonalBlockMatrixView<'a, T, N>;
     fn view(&'a self) -> Self::Type {
         DiagonalBlockMatrixBase(View::view(&self.0))
     }
 }
 
-impl<'a, S: Set + ViewMut<'a, Type = &'a mut [f64]>, I: AsRef<[usize]>, N: Copy> ViewMut<'a>
+impl<'a, T: 'a, S: Set + ViewMut<'a, Type = &'a mut [T]>, I: AsRef<[usize]>, N: Copy> ViewMut<'a>
     for DiagonalBlockMatrixBase<S, I, N>
 where
     UniChunked<S, N>: Set,
 {
-    type Type = DiagonalBlockMatrixViewMut<'a, f64, N>;
+    type Type = DiagonalBlockMatrixViewMut<'a, T, N>;
     fn view_mut(&'a mut self) -> Self::Type {
         DiagonalBlockMatrixBase(ViewMut::view_mut(&mut self.0))
     }
