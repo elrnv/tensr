@@ -1116,15 +1116,21 @@ impl<T: Scalar> From<DBlockMatrix3<T>> for DSBlockMatrix3<T> {
     }
 }
 
-impl<I: AsRef<[usize]>> From<DiagonalBlockMatrix3<f64, I>> for DSBlockMatrix3 {
-    fn from(diag: DiagonalBlockMatrix3<f64, I>) -> DSBlockMatrix3 {
+impl<T: Scalar, I: AsRef<[usize]>> From<DiagonalBlockMatrix3<T, I>> for DSBlockMatrix3<T> {
+    fn from(diag: DiagonalBlockMatrix3<T, I>) -> DSBlockMatrix3<T> {
         // Need to convert each triplet in diag into a diagonal 3x3 matrix.
         // Each block is essentially [x, 0, 0, 0, y, 0, 0, 0, z].
         let data: Chunked3<Vec<_>> = diag
             .view()
             .0
             .iter()
-            .map(|&[x, y, z]| [[x, 0.0, 0.0], [0.0, y, 0.0], [0.0, 0.0, z]])
+            .map(|&[x, y, z]| {
+                [
+                    [x, T::zero(), T::zero()],
+                    [T::zero(), y, T::zero()],
+                    [T::zero(), T::zero(), z],
+                ]
+            })
             .collect();
 
         let num_cols = diag.num_cols();
