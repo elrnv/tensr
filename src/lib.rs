@@ -1644,8 +1644,8 @@ mod autodiff_impls {
     }
 }
 
-pub trait Real: Scalar + Float {}
-impl<T> Real for T where T: Scalar + Float {}
+pub trait Real: Scalar + Float + num_traits::Signed {}
+impl<T> Real for T where T: Scalar + Float + num_traits::Signed {}
 
 /// An extension to the real trait that allows ops with f64 floats.
 pub trait Real64: Real + NumOps<f64> + NumAssignOps<f64> {}
