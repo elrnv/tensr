@@ -1592,6 +1592,7 @@ mod autodiff_impls {
             + num_traits::NumAssign
             + num_traits::FromPrimitive
             + std::iter::Sum
+            + Default
             + IntoTensor<Tensor = Tensor<Self>>
     {
     }
