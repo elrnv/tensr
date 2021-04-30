@@ -1140,8 +1140,8 @@ impl<S: IntoIterator> IntoIterator for Tensor<S> {
 
 /// Plain old data trait. Types that implement this trait contain no references and can be copied
 /// with `memcpy`.
-pub trait Pod: 'static + Copy + Sized + Send + Sync + bytemuck::Pod {}
-impl<T> Pod for T where T: 'static + Copy + Sized + Send + Sync + bytemuck::Pod {}
+pub trait Pod: Sized + Send + Sync + bytemuck::Pod {}
+impl<T> Pod for T where T: Sized + Send + Sync + bytemuck::Pod {}
 
 impl<T: Scalar> AsTensor for T {
     type Inner = T;
@@ -1178,6 +1178,7 @@ pub trait Scalar:
     + num_traits::NumAssign
     + num_traits::FromPrimitive
     + std::iter::Sum
+    + Default
     //+ Dummy
     + IntoTensor<Tensor = Tensor<Self>>
 {
