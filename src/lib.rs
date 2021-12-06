@@ -27,7 +27,7 @@ use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
 
-use num_traits::{Float, NumAssignOps, NumOps, One, Zero};
+use num_traits::{Float, FloatConst, NumAssignOps, NumOps, One, Zero};
 use typenum::Unsigned;
 use unroll::unroll_for_loops;
 
@@ -1646,8 +1646,8 @@ mod autodiff_impls {
     }
 }
 
-pub trait Real: Scalar + Float + num_traits::Signed {}
-impl<T> Real for T where T: Scalar + Float + num_traits::Signed {}
+pub trait Real: Scalar + Float + FloatConst + num_traits::Signed {}
+impl<T> Real for T where T: Scalar + Float + FloatConst + num_traits::Signed {}
 
 /// An extension to the real trait that allows ops with f64 floats.
 pub trait Real64: Real + NumOps<f64> + NumAssignOps<f64> {}
