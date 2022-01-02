@@ -879,6 +879,9 @@ pub type DSBlockMatrix3View<'a, T = f64> = DSBlockMatrixView<'a, T, U3, U3>;
 pub type DSBlockMatrix1x3<T = f64, I = Vec<usize>> = DSBlockMatrix<T, I, U1, U3>;
 pub type DSBlockMatrix1x3View<'a, T = f64> = DSBlockMatrixView<'a, T, U1, U3>;
 
+pub type DSBlockMatrix3x1<T = f64, I = Vec<usize>> = DSBlockMatrix<T, I, U3, U1>;
+pub type DSBlockMatrix3x1View<'a, T = f64> = DSBlockMatrixView<'a, T, U3, U1>;
+
 impl<S: Set + IntoData, I: Set, N: Dimension, M: Dimension> BlockMatrix
     for DSBlockMatrixBase<S, I, N, M>
 where
@@ -1048,6 +1051,91 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
         &self,
         keep: impl Fn(usize, usize, &Matrix1x3<T>) -> bool,
     ) -> DSBlockMatrix1x3<T> {
+        self.as_data()
+            .view()
+            .pruned(
+                |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
+                |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
+                |_, _| {},
+            )
+            .into_tensor()
+    }
+}
+
+impl DSBlockMatrix3x1 {
+    /// Assume that rows are monotonically increasing in the iterator. Columns don't have an order
+    /// restriction.
+    pub fn from_block_triplets_iter_uncompressed<I>(
+        iter: I,
+        num_rows: usize,
+        num_cols: usize,
+    ) -> Self
+    where
+        I: Iterator<Item = (usize, usize, [f64; 3])>,
+    {
+        let cap = iter.size_hint().0;
+        let mut cols = Vec::with_capacity(cap);
+        let mut values: Vec<f64> = Vec::with_capacity(cap*3);
+        let mut offsets = Vec::with_capacity(num_rows);
+
+        let mut prev_row = 0; // offset by +1 so we don't have to convert between isize.
+        for (row, col, block) in iter {
+            assert!(row + 1 >= prev_row); // We assume that rows are monotonically increasing.
+
+            if row + 1 != prev_row {
+                prev_row = row + 1;
+                offsets.push(cols.len());
+            }
+
+            cols.push(col);
+            // Push each row at a time to produce a Vec<f64>
+            values.push(block[0]);
+            values.push(block[1]);
+            values.push(block[2]);
+        }
+        offsets.push(cols.len());
+        offsets.shrink_to_fit();
+
+        let mut col_data = Chunked::from_offsets(
+            offsets,
+            Sparse::from_dim(
+                cols,
+                num_cols,
+                Chunked3::from_flat(Chunked1::from_flat(values)),
+            ),
+        );
+
+        col_data.sort_chunks_by_index();
+
+        col_data.into_tensor()
+    }
+
+    /// Assume that rows are monotonically increasing in the iterator. Columns don't have an order
+    /// restriction.
+    pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+    where
+        I: Iterator<Item = (usize, usize, [f64; 3])>,
+    {
+        Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
+    }
+}
+
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3x1<T, I> {
+    /// Compress the matrix representation by consolidating duplicate entries.
+    pub fn compressed(&self) -> DSBlockMatrix3x1<T> {
+        self.as_data()
+            .view()
+            .compressed(|a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor())
+            .into_tensor()
+    }
+}
+
+impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3x1<T, I> {
+    /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
+    pub fn pruned(
+        &self,
+        keep: impl Fn(usize, usize, &Matrix3x1<T>) -> bool,
+    ) -> DSBlockMatrix3x1<T> {
         self.as_data()
             .view()
             .pruned(
