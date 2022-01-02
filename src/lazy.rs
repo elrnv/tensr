@@ -908,8 +908,8 @@ where
 /// to implement operations on sparse structures.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct IndexedExpr<E> {
-    pub(crate) index: usize,
-    pub(crate) expr: E,
+    pub index: usize,
+    pub expr: E,
 }
 
 impl<E> IndexedExpr<E> {
