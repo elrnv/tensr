@@ -967,13 +967,17 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3<T, I> {
 
 impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3<T, I> {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
-    pub fn pruned(&self, keep: impl Fn(usize, usize, &Matrix3<T>) -> bool) -> DSBlockMatrix3<T> {
+    pub fn pruned(
+        &self,
+        keep: impl Fn(usize, usize, &Matrix3<T>) -> bool,
+        mapping: impl FnMut(usize, usize),
+    ) -> DSBlockMatrix3<T> {
         self.as_data()
             .view()
             .pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
-                |_, _| {},
+                mapping,
             )
             .into_tensor()
     }
@@ -1050,13 +1054,14 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
     pub fn pruned(
         &self,
         keep: impl Fn(usize, usize, &Matrix1x3<T>) -> bool,
+        mapping: impl FnMut(usize, usize),
     ) -> DSBlockMatrix1x3<T> {
         self.as_data()
             .view()
             .pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
-                |_, _| {},
+                mapping,
             )
             .into_tensor()
     }
@@ -1135,13 +1140,14 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix3x1<T, I> {
     pub fn pruned(
         &self,
         keep: impl Fn(usize, usize, &Matrix3x1<T>) -> bool,
+        mapping: impl FnMut(usize, usize),
     ) -> DSBlockMatrix3x1<T> {
         self.as_data()
             .view()
             .pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
-                |_, _| {},
+                mapping,
             )
             .into_tensor()
     }
