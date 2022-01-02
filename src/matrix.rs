@@ -1062,7 +1062,7 @@ impl<T: Scalar, I: AsIndexSlice> DSBlockMatrix1x3<T, I> {
     }
 }
 
-impl DSBlockMatrix3x1 {
+impl<T: Scalar> DSBlockMatrix3x1<T> {
     /// Assume that rows are monotonically increasing in the iterator. Columns don't have an order
     /// restriction.
     pub fn from_block_triplets_iter_uncompressed<I>(
@@ -1071,11 +1071,11 @@ impl DSBlockMatrix3x1 {
         num_cols: usize,
     ) -> Self
     where
-        I: Iterator<Item = (usize, usize, [f64; 3])>,
+        I: Iterator<Item = (usize, usize, [T; 3])>,
     {
         let cap = iter.size_hint().0;
         let mut cols = Vec::with_capacity(cap);
-        let mut values: Vec<f64> = Vec::with_capacity(cap * 3);
+        let mut values: Vec<T> = Vec::with_capacity(cap * 3);
         let mut offsets = Vec::with_capacity(num_rows);
 
         let mut prev_row = 0; // offset by +1 so we don't have to convert between isize.
@@ -1088,7 +1088,7 @@ impl DSBlockMatrix3x1 {
             }
 
             cols.push(col);
-            // Push each row at a time to produce a Vec<f64>
+            // Push each row at a time to produce a Vec<T>
             values.push(block[0]);
             values.push(block[1]);
             values.push(block[2]);
@@ -1114,7 +1114,7 @@ impl DSBlockMatrix3x1 {
     /// restriction.
     pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
     where
-        I: Iterator<Item = (usize, usize, [f64; 3])>,
+        I: Iterator<Item = (usize, usize, [T; 3])>,
     {
         Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
