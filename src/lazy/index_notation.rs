@@ -18,7 +18,7 @@ impl<'a, I, T: 'a + Clone> IExpr<'a, I> for [T] {
     #[inline]
     fn iexpr(&'a self, index: I) -> Self::Output {
         SliceIterExpr {
-            index,
+            _index: index,
             iter: self.iter(),
         }
     }
@@ -29,7 +29,7 @@ impl<'a, I, T: 'a + Clone> IExpr<'a, I> for Vec<T> {
     #[inline]
     fn iexpr(&'a self, index: I) -> Self::Output {
         SliceIterExpr {
-            index,
+            _index: index,
             iter: self.iter(),
         }
     }

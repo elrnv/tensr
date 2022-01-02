@@ -20,6 +20,9 @@ pub type SubExpr<L, R> = CwiseBinExpr<L, R, Subtraction>;
 /// A lazy component-wise multiply expression to be evaluated at a later time.
 pub type CwiseMulExpr<L, R> = CwiseBinExpr<L, R, CwiseMultiplication>;
 
+/// A lazy multiply expression to be evaluated at a later time.
+pub type MulExpr<L, R> = CwiseBinExpr<L, R, Multiplication>;
+
 impl<L, R, F: Default> CwiseBinExpr<L, R, F>
 where
     Self: CwiseBinExprImpl<L, R, F>,
@@ -651,22 +654,13 @@ where
     type Item = IndexedExpr<Out>;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.left.peek().is_none() || self.right.peek().is_none() {
-            return None;
-        }
         loop {
-            let left = self.left.peek().unwrap();
-            let right = self.right.peek().unwrap();
+            let left = self.left.peek()?;
+            let right = self.right.peek()?;
             if left.index < right.index {
-                let next_left = self.left.next();
-                if next_left.is_none() {
-                    return None;
-                }
+                let _ = self.left.next().unwrap();
             } else if left.index > right.index {
-                let next_right = self.right.next();
-                if next_right.is_none() {
-                    return None;
-                }
+                let _ = self.right.next().unwrap();
             } else {
                 return Some(IndexedExpr {
                     index: left.index,
@@ -707,6 +701,80 @@ where
     }
 }
 impl<L: Iterator, R: Iterator> TotalExprSize for CwiseMulExpr<SparseExpr<L>, SparseExpr<R>>
+where
+    SparseExpr<L>: Iterator + Expression,
+    SparseExpr<R>: Iterator + Expression,
+{
+    #[inline]
+    fn total_size_hint(&self, cwise_reduce: u32) -> Option<usize> {
+        if let Some(left) = self.left.total_size_hint(cwise_reduce) {
+            if let Some(right) = self.right.total_size_hint(cwise_reduce) {
+                Some(left.min(right))
+            } else {
+                Some(left)
+            }
+        } else {
+            self.right.total_size_hint(cwise_reduce)
+        }
+    }
+}
+
+impl<L, R, A, B, Out> Iterator for MulExpr<SparseExpr<L>, SparseExpr<R>>
+where
+    L: Iterator<Item = IndexedExpr<A>>,
+    R: Iterator<Item = IndexedExpr<B>>,
+    A: MulOp<B, Output = Out>,
+{
+    type Item = IndexedExpr<Out>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let left = self.left.peek()?;
+            let right = self.right.peek()?;
+            if left.index < right.index {
+                let _ = self.left.next().unwrap();
+            } else if left.index > right.index {
+                let _ = self.right.next().unwrap();
+            } else {
+                return Some(IndexedExpr {
+                    index: left.index,
+                    expr: self.op.apply(
+                        self.left.next().unwrap().expr,
+                        self.right.next().unwrap().expr,
+                    ),
+                });
+            }
+        }
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let left = self.left.size_hint();
+        let right = self.right.size_hint();
+        (
+            left.0.min(right.0),
+            // Yes min because excess elements must vanish when multiplied by zero.
+            left.1.and_then(|l| right.1.map(|r| l.min(r))),
+        )
+    }
+}
+
+impl<L: Iterator, R: Iterator> Expression for MulExpr<SparseExpr<L>, SparseExpr<R>>
+where
+    SparseExpr<L>: Iterator + Expression,
+    SparseExpr<R>: Iterator + Expression,
+{
+}
+impl<L: Iterator, R: Iterator> ExprSize for MulExpr<SparseExpr<L>, SparseExpr<R>>
+where
+    SparseExpr<L>: Iterator + Expression,
+    SparseExpr<R>: Iterator + Expression,
+{
+    #[inline]
+    fn expr_size(&self) -> usize {
+        self.left.expr_size().min(self.right.expr_size())
+    }
+}
+impl<L: Iterator, R: Iterator> TotalExprSize for MulExpr<SparseExpr<L>, SparseExpr<R>>
 where
     SparseExpr<L>: Iterator + Expression,
     SparseExpr<R>: Iterator + Expression,

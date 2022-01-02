@@ -5,7 +5,8 @@ use super::*;
 
 #[derive(Debug)]
 pub struct SliceIterExprMut<'a, T, I = ()> {
-    index: I,
+    // Not yet used (intended for index notation)
+    _index: I,
     iter: std::slice::IterMut<'a, T>,
 }
 
@@ -49,7 +50,7 @@ impl<'a, T: 'a> ExprMut<'a> for [T] {
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
         SliceIterExprMut {
-            index: (),
+            _index: (),
             iter: self.iter_mut(),
         }
     }
@@ -60,7 +61,7 @@ impl<'a, T: 'a> ExprMut<'a> for Vec<T> {
     #[inline]
     fn expr_mut(&'a mut self) -> Self::Output {
         SliceIterExprMut {
-            index: (),
+            _index: (),
             iter: self.iter_mut(),
         }
     }

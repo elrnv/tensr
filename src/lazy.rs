@@ -390,7 +390,8 @@ type Sum<E> = Reduce<E, Addition>;
 /// A wrapper around a cloned iterator over a slice.
 #[derive(Clone, Debug)]
 pub struct SliceIterExpr<'a, T, I = ()> {
-    pub(crate) index: I,
+    // Not yet used (intended for index notation)
+    pub(crate) _index: I,
     pub(crate) iter: std::slice::Iter<'a, T>,
 }
 
@@ -1220,7 +1221,7 @@ impl<'a, T: 'a + Clone> Expr<'a> for [T] {
     #[inline]
     fn expr(&'a self) -> Self::Output {
         SliceIterExpr {
-            index: (),
+            _index: (),
             iter: self.iter(),
         }
     }
@@ -1231,7 +1232,7 @@ impl<'a, T: 'a + Clone> Expr<'a> for &'a [T] {
     #[inline]
     fn expr(&'a self) -> Self::Output {
         SliceIterExpr {
-            index: (),
+            _index: (),
             iter: self.iter(),
         }
     }
@@ -1242,7 +1243,7 @@ impl<'a, T: 'a + Clone> Expr<'a> for Vec<T> {
     #[inline]
     fn expr(&'a self) -> Self::Output {
         SliceIterExpr {
-            index: (),
+            _index: (),
             iter: self.iter(),
         }
     }
@@ -2302,6 +2303,52 @@ mod tests {
     }
 
     #[test]
+    fn sparse_unichunked_dot() {
+        let a = Sparse::from_dim(
+            vec![0, 3, 5],
+            6,
+            Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6]),
+        );
+        let b = Sparse::from_dim(
+            vec![3, 4],
+            6,
+            Chunked2::from_flat(vec![7, 8, 9, 10]),
+        );
+        assert_eq!(
+            53,
+            a.expr().dot(b.expr())
+        );
+    }
+
+    #[test]
+    fn sparse_block_mul() {
+        let a = Sparse::from_dim(
+            vec![0, 3, 5],
+            6,
+            // [[1] [2]]
+            // [[3] [4]] *
+            // [[5] [6]]
+            Chunked2::from_flat(Chunked1::from_flat(vec![1, 2, 3, 4, 5, 6])),
+        );
+        let b = Sparse::from_dim(
+            vec![3, 4],
+            6,
+            // [[7 8]] *
+            // [[9 10]]
+            Chunked1::from_flat(Chunked2::from_flat(vec![7, 8, 9, 10])),
+        );
+        let mut mul_expr = MulExpr::with_op(a.expr(), b.expr(), Multiplication);
+        assert_eq!(
+            Matrix2::new([[21, 24], [28, 32]]),
+            mul_expr.next().unwrap().expr
+        );
+        assert_eq!(
+            None,
+            mul_expr.next(),
+        );
+    }
+
+    #[test]
     fn nested_unichunked_add() {
         // 2x2 Block vector
         let a = Chunked2::from_flat(Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8]));
@@ -2327,6 +2374,7 @@ mod tests {
             (a.expr() + b.expr()).eval()
         );
     }
+
 
     #[test]
     fn subset_vec_sub() {
