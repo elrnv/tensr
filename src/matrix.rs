@@ -1075,7 +1075,7 @@ impl DSBlockMatrix3x1 {
     {
         let cap = iter.size_hint().0;
         let mut cols = Vec::with_capacity(cap);
-        let mut values: Vec<f64> = Vec::with_capacity(cap*3);
+        let mut values: Vec<f64> = Vec::with_capacity(cap * 3);
         let mut offsets = Vec::with_capacity(num_rows);
 
         let mut prev_row = 0; // offset by +1 so we don't have to convert between isize.

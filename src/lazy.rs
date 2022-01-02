@@ -2309,15 +2309,8 @@ mod tests {
             6,
             Chunked2::from_flat(vec![1, 2, 3, 4, 5, 6]),
         );
-        let b = Sparse::from_dim(
-            vec![3, 4],
-            6,
-            Chunked2::from_flat(vec![7, 8, 9, 10]),
-        );
-        assert_eq!(
-            53,
-            a.expr().dot(b.expr())
-        );
+        let b = Sparse::from_dim(vec![3, 4], 6, Chunked2::from_flat(vec![7, 8, 9, 10]));
+        assert_eq!(53, a.expr().dot(b.expr()));
     }
 
     #[test]
@@ -2342,10 +2335,7 @@ mod tests {
             Matrix2::new([[21, 24], [28, 32]]),
             mul_expr.next().unwrap().expr
         );
-        assert_eq!(
-            None,
-            mul_expr.next(),
-        );
+        assert_eq!(None, mul_expr.next(),);
     }
 
     #[test]
@@ -2374,7 +2364,6 @@ mod tests {
             (a.expr() + b.expr()).eval()
         );
     }
-
 
     #[test]
     fn subset_vec_sub() {

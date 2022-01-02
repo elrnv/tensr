@@ -2352,11 +2352,7 @@ mod tests {
         let b = a.transpose();
         let result = a * b;
         let result2 = a.expr() * b.expr();
-        let expected = Matrix3::new([
-            [1.0, 2.0, 3.0],
-            [2.0, 4.0, 6.0],
-            [3.0, 6.0, 9.0],
-        ]);
+        let expected = Matrix3::new([[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [3.0, 6.0, 9.0]]);
         assert_eq!(result, expected);
         assert_eq!(result2, expected);
     }
