@@ -26,6 +26,8 @@ pub type SSBlockMatrixView<'a, T = f64, N = usize, M = usize> =
     SSBlockMatrixBase<&'a Tensor<[T]>, &'a [usize], N, M>;
 pub type SSBlockMatrix3<T = f64, I = Vec<usize>> = SSBlockMatrix<T, I, U3, U3>;
 pub type SSBlockMatrix3View<'a, T = f64> = SSBlockMatrixView<'a, T, U3, U3>;
+pub type SSBlockMatrix3x1<T = f64, I = Vec<usize>> = SSBlockMatrix<T, I, U3, U1>;
+pub type SSBlockMatrix3x1View<'a, T = f64> = SSBlockMatrixView<'a, T, U3, U1>;
 
 impl<S: Set + IntoData, I, N: Dimension, M: Dimension> BlockMatrix
     for SSBlockMatrixBase<S, I, N, M>
@@ -56,6 +58,8 @@ impl<S: Set + IntoData, I, N: Dimension, M: Dimension> Matrix for SSBlockMatrixB
         self.as_data().selection().target.distance()
     }
 }
+
+// 3x3 block matrix impls
 
 impl<'a, T: Scalar, I: Set + AsIndexSlice> SSBlockMatrix3<T, I> {
     pub fn write_img<P: AsRef<std::path::Path>>(&'a self, path: P) {
@@ -528,66 +532,159 @@ impl<T: Scalar> SSBlockMatrix3View<'_, T> {
     }
 }
 
-/// A transpose of a matrix.
-pub struct Transpose<M>(pub M);
+// 3x1 block matrix impls
 
-impl<M: BlockMatrix> BlockMatrix for Transpose<M> {
-    fn num_total_cols(&self) -> usize {
-        self.0.num_total_rows()
+impl<'a, T: Scalar, I: Set + AsIndexSlice> SSBlockMatrix3x1<T, I> {
+    pub fn write_img<P: AsRef<std::path::Path>>(&'a self, path: P) {
+        use image::ImageBuffer;
+
+        let nrows = self.num_total_rows();
+        let ncols = self.num_total_cols();
+        if nrows == 0 || ncols == 0 {
+            return;
+        }
+
+        let ciel = 10.0; //jac.max();
+        let floor = -10.0; //jac.min();
+
+        let img = ImageBuffer::from_fn(ncols as u32, nrows as u32, |c, r| {
+            let val = self.coeff(r as usize, c as usize).to_f64().unwrap();
+            let color = if val > 0.0 {
+                [255, (255.0 * val / ciel) as u8, 0]
+            } else if val < 0.0 {
+                [0, (255.0 * (1.0 + val / floor)) as u8, 255]
+            } else {
+                [255, 0, 255]
+            };
+            image::Rgb(color)
+        });
+
+        img.save(path.as_ref())
+            .expect("Failed to save matrix image.");
     }
-    fn num_total_rows(&self) -> usize {
-        self.0.num_total_cols()
-    }
-    fn num_cols_per_block(&self) -> usize {
-        self.0.num_rows_per_block()
-    }
-    fn num_rows_per_block(&self) -> usize {
-        self.0.num_cols_per_block()
+
+    /// Get the value in the matrix at the given coordinates.
+    pub fn coeff(&'a self, r: usize, c: usize) -> T {
+        let view = self.view().into_data();
+        if let Ok(row) = view
+            .selection
+            .indices
+            .binary_search(&(r / 3))
+            .map(|idx| view.source.isolate(idx))
+        {
+            row.selection
+                .indices
+                .binary_search(&c)
+                .map(|idx| row.source.isolate(idx).at(r % 3)[c])
+                .unwrap_or_else(|_| T::zero())
+        } else {
+            T::zero()
+        }
     }
 }
 
-impl<M: Matrix> Matrix for Transpose<M> {
-    type Transpose = M;
-    fn transpose(self) -> Self::Transpose {
-        self.0
-    }
-    fn num_cols(&self) -> usize {
-        self.0.num_rows()
-    }
-    fn num_rows(&self) -> usize {
-        self.0.num_cols()
-    }
-}
-
-impl<T, M> Norm<T> for Transpose<M>
-where
-    M: Norm<T>,
-{
-    fn lp_norm(&self, norm: LpNorm) -> T
-    where
-        T: Float,
+impl<T: Scalar> SSBlockMatrix3x1<T> {
+    /// Assume that rows are monotonically increasing in the iterator.
+    pub fn from_block_triplets_iter_uncompressed<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+        where
+            I: Iterator<Item = (usize, usize, [T; 3])>,
     {
-        self.0.lp_norm(norm)
+        let cap = iter.size_hint().0;
+        let mut rows = Vec::with_capacity(cap);
+        let mut cols = Vec::with_capacity(cap);
+        let mut values: Vec<T> = Vec::with_capacity(cap);
+        let mut offsets = Vec::with_capacity(num_rows);
+
+        let mut prev_row = 0; // offset by +1 so we don't have to convert between isize.
+        for (row, col, block) in iter {
+            assert!(row + 1 >= prev_row); // We assume that rows are monotonically increasing.
+
+            if row + 1 != prev_row {
+                rows.push(row);
+                prev_row = row + 1;
+                offsets.push(cols.len());
+            }
+
+            cols.push(col);
+            // Push each row at a time to produce a Vec<[T; 3]>
+            values.push(block[0]);
+            values.push(block[1]);
+            values.push(block[2]);
+        }
+        offsets.push(cols.len());
+        offsets.shrink_to_fit();
+        rows.shrink_to_fit();
+
+        let mut col_data = Chunked::from_offsets(
+            offsets,
+            Sparse::from_dim(
+                cols,
+                num_cols,
+                Chunked3::from_flat(Chunked1::from_flat(values)),
+            ),
+        );
+
+        col_data.sort_chunks_by_index();
+
+        Sparse::from_dim(rows, num_rows, col_data)
+            .into_tensor()
     }
-    fn norm_squared(&self) -> T {
-        self.0.norm_squared()
+    pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+        where
+            I: Iterator<Item = (usize, usize, [T; 3])>,
+    {
+        Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
+    }
+
+}
+
+impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
+    where
+        Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
+        I: IntoOwned<Owned = Vec<usize>>,
+{
+    /// Compress the matrix representation by consolidating duplicate entries.
+    pub fn compressed(&self) -> SSBlockMatrix3x1<T> {
+        let data = self.as_data();
+        // Check that there are no duplicate rows. This should not happen when crating from
+        // triplets.
+        assert!(is_unique(data.selection.indices.as_ref()));
+        Sparse::new(
+            data.selection.view().into_owned(),
+            data.view().source.compressed(|a, b| {
+                *AsMutTensor::as_mut_tensor(a.as_mut_arrays()) += b.into_arrays().as_tensor()
+            }),
+        )
+            .into_tensor()
     }
 }
 
-impl<'a, M: View<'a>> View<'a> for Transpose<M> {
-    type Type = Transpose<M::Type>;
-    fn view(&'a self) -> Self::Type {
-        Transpose(self.0.view())
+impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
+    where
+        Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
+        I: IntoOwned<Owned = Vec<usize>>,
+{
+    /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
+    pub fn pruned(
+        &self,
+        keep: impl Fn(usize, usize, &Matrix3x1<T>) -> bool,
+        mapping: impl FnMut(usize, usize),
+    ) -> SSBlockMatrix3x1<T> {
+        let data = self.as_data();
+        // Check that there are no duplicate rows. This should not happen when crating from
+        // triplets.
+        assert!(is_unique(data.selection.indices.as_ref()));
+        Sparse::new(
+            data.selection.view().into_owned(),
+            data.view().source.pruned(
+                |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
+                |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
+                mapping,
+            )
+        )
+            .into_tensor()
     }
 }
-impl<'a, M: ViewMut<'a>> ViewMut<'a> for Transpose<M> {
-    type Type = Transpose<M::Type>;
-    fn view_mut(&'a mut self) -> Self::Type {
-        Transpose(self.0.view_mut())
-    }
-}
-
-impl<M: Viewed> Viewed for Transpose<M> {}
 
 #[cfg(test)]
 mod tests {
