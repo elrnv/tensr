@@ -1838,7 +1838,7 @@ macro_rules! impl_array_vector_traits {
     };
 }
 
-impl_array_vector_traits!(1, 2, 3, 4);
+impl_array_vector_traits!(1, 2, 3, 4, 5, 6, 7, 8, 9);
 
 macro_rules! impl_array_matrix_traits {
     () => {};
@@ -2524,6 +2524,17 @@ mod tests {
         let out: Vec<i32> = (a.expr() * b.expr()).eval();
         assert_eq!(vec![8, 19], out);
     }
+
+    //#[test]
+    //fn sparse_matrix_sparse_vector_mul() {
+    //    // Variable length rows with one empty:
+    //    // [2, 3]  [0 1]
+    //    //         [0 0]
+    //    let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, vec![1])));
+    //    let b = Sparse::from_dim(vec![0,1], 2, vec![2,3]);
+    //    let out: Vec<i32> = (b.expr() * a.expr()).eval();
+    //    assert_eq!(Sparse::from_dim(vec![1], 2, vec![2]), out);
+    //}
 
     //TODO: There are some difficulties implementing this completely.
     //      As it stands, It seems that extending the standard Iterator to a SparseIterator Trait
