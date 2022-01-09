@@ -343,6 +343,7 @@ where
     }
 }
 
+
 impl<'a, T: Scalar, Rhs> Mul<Rhs> for Transpose<SSBlockMatrix3View<'_, T>>
 where
     Rhs: Into<Tensor<SubsetView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>>,
@@ -359,6 +360,39 @@ where
             for (row_idx, block, _) in col.iter() {
                 *res[row_idx].as_mut_tensor() +=
                     (rhs.transpose() * *block.into_arrays().as_tensor())[0];
+            }
+        }
+
+        res.into_tensor()
+    }
+}
+
+impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>> for Transpose<SSBlockMatrix3View<'_, T>> {
+    type Output = Tensor<Chunked3<Tensor<Vec<T>>>>;
+    fn mul(self, rhs: Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>) -> Self::Output {
+        let rhs_data = rhs.as_data();
+        assert_eq!(rhs_data.len(), self.num_cols());
+
+        let mut res = Chunked3::from_flat(vec![T::zero(); self.num_rows()]);
+        let mut lhs_col_iter = self.0.as_data().iter().peekable();
+        let mut rhs_val_iter = rhs_data.into_iter().peekable();
+
+        while lhs_col_iter.peek().is_some() || rhs_val_iter.peek().is_some() {
+            if let (Some(left), Some(right)) = (lhs_col_iter.peek(), rhs_val_iter.peek()) {
+                if left.0 < right.0 {
+                    let _ = lhs_col_iter.next().unwrap();
+                } else if left.0 > right.0 {
+                    let _ = rhs_val_iter.next().unwrap();
+                } else {
+                    let left = lhs_col_iter.next().unwrap().1;
+                    let right = rhs_val_iter.next().unwrap().1;
+                    for (index, left_block, _) in left.iter() {
+                        let left_block = left_block.into_arrays();
+                        for i in 0..3 {
+                            *res[index].as_mut_tensor() += *left_block[i].as_tensor() * right[i];
+                        }
+                    }
+                }
             }
         }
 
@@ -464,6 +498,22 @@ impl<T: Scalar> Mul<Transpose<SSBlockMatrix3View<'_, T>>> for SSBlockMatrix3View
         out.trim();
 
         out.into_tensor()
+    }
+}
+
+impl<T: Scalar> Transpose<SSBlockMatrix3<T>> {
+    pub fn premultiply_block_diagonal_mtx(&mut self, lhs: BlockDiagonalMatrix3View<'_, T>) {
+        assert_eq!(lhs.num_cols(), self.num_rows());
+        for (_, mut col) in self.0.view_mut().as_mut_data().iter_mut() {
+            for (row_idx, block) in col.iter_mut() {
+                let lhs_block: Matrix3<T> = *lhs.0.at(*row_idx).into_arrays().as_tensor();
+                let out_block = block.into_arrays().as_mut_tensor();
+                let rhs_block = *out_block;
+                out_block[0] = rhs_block * lhs_block[0];
+                out_block[1] = rhs_block * lhs_block[1];
+                out_block[2] = rhs_block * lhs_block[2];
+            }
+        }
     }
 }
 
@@ -830,6 +880,19 @@ mod tests {
         for (&val, &exp) in val_vec.iter().zip(exp_vec.iter()) {
             assert_relative_eq!(val, exp);
         }
+    }
+
+    #[test]
+    fn sparse_matrix_sparse_vector_mul() {
+        // Variable length rows with one empty:
+        // [2, 3]  [0 1]
+        //         [0 0]
+        let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, vec![1])));
+        let b = Sparse::from_dim(vec![0,1], 2, vec![2,3]);
+        let a_mtx = a.into_tensor().transpose();
+        let b_vec = b.into_tensor();
+        let out: Sparse<Vec<i32>> = a_mtx * b_vec;
+        assert_eq!(Sparse::from_dim(vec![1], 2, vec![2]), out);
     }
 
     //#[test]
