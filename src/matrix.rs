@@ -791,25 +791,25 @@ where
 
 impl<S: Viewed, I, N, M> Viewed for BlockDiagonalMatrixBase<S, I, N, M> {}
 
-impl<'a, S: Set + View<'a, Type = &'a [f64]>, I: AsRef<[usize]>, N: Copy, M: Copy> View<'a>
+impl<'a, T: 'a, S: Set + View<'a, Type = &'a [T]>, I: AsRef<[usize]>, N: Copy, M: Copy> View<'a>
     for BlockDiagonalMatrixBase<S, I, N, M>
 where
     UniChunked<UniChunked<S, M>, N>: Set,
     UniChunked<S, M>: Set,
 {
-    type Type = BlockDiagonalMatrixView<'a, f64, N, M>;
+    type Type = BlockDiagonalMatrixView<'a, T, N, M>;
     fn view(&'a self) -> Self::Type {
         BlockDiagonalMatrixBase(View::view(&self.0))
     }
 }
 
-impl<'a, S: Set + ViewMut<'a, Type = &'a mut [f64]>, I: AsRef<[usize]>, N: Copy, M: Copy>
+impl<'a, T: 'a, S: Set + ViewMut<'a, Type = &'a mut [T]>, I: AsRef<[usize]>, N: Copy, M: Copy>
     ViewMut<'a> for BlockDiagonalMatrixBase<S, I, N, M>
 where
     UniChunked<UniChunked<S, M>, N>: Set,
     UniChunked<S, M>: Set,
 {
-    type Type = BlockDiagonalMatrixViewMut<'a, f64, N, M>;
+    type Type = BlockDiagonalMatrixViewMut<'a, T, N, M>;
     fn view_mut(&'a mut self) -> Self::Type {
         BlockDiagonalMatrixBase(ViewMut::view_mut(&mut self.0))
     }
