@@ -509,9 +509,9 @@ impl<T: Scalar> Transpose<SSBlockMatrix3<T>> {
                 let lhs_block: Matrix3<T> = *lhs.0.at(*row_idx).into_arrays().as_tensor();
                 let out_block = block.into_arrays().as_mut_tensor();
                 let rhs_block = *out_block;
-                out_block[0] = rhs_block * lhs_block[0];
-                out_block[1] = rhs_block * lhs_block[1];
-                out_block[2] = rhs_block * lhs_block[2];
+                out_block[0] = lhs_block * rhs_block[0];
+                out_block[1] = lhs_block * rhs_block[1];
+                out_block[2] = lhs_block * rhs_block[2];
             }
         }
     }
