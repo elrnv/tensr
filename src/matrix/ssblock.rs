@@ -343,6 +343,37 @@ where
     }
 }
 
+impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>> for SSBlockMatrix3View<'a, T>
+{
+    type Output = Tensor<SparseView<'a, Tensor<Chunked3<Tensor<Vec<T>>>>>>;
+    fn mul(self, rhs: Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>) -> Self::Output {
+        let rhs_data = rhs.as_data();
+        assert_eq!(rhs_data.len(), self.num_cols());
+
+        let mut res = Chunked3::from_flat(vec![T::zero(); self.data.len()*3]);
+
+        for (index, (_, row, _)) in self.as_data().iter().enumerate() {
+            let mut lhs_val_iter = row.into_iter().peekable();
+            let mut rhs_val_iter = rhs_data.into_iter().peekable();
+            while lhs_val_iter.peek().is_some() || rhs_val_iter.peek().is_some() {
+                if let (Some(left), Some(right)) = (lhs_val_iter.peek(), rhs_val_iter.peek()) {
+                    if left.0 < right.0 {
+                        let _ = lhs_val_iter.next().unwrap();
+                    } else if left.0 > right.0 {
+                        let _ = rhs_val_iter.next().unwrap();
+                    } else {
+                        let left = lhs_val_iter.next().unwrap().1.into_arrays();
+                        let right = rhs_val_iter.next().unwrap().1.into_data().into_tensor();
+                        *res[index].as_mut_tensor() += *left.as_tensor() * right;
+                    }
+                }
+            }
+        }
+
+        Sparse::new(self.data.selection, res).into_tensor()
+    }
+}
+
 
 impl<'a, T: Scalar, Rhs> Mul<Rhs> for Transpose<SSBlockMatrix3View<'_, T>>
 where
@@ -882,17 +913,27 @@ mod tests {
         }
     }
 
+    // #[test]
+    // fn sparse_matrix_sparse_vector_mul() {
+    //     // Variable length rows with one empty:
+    //     // [2, 3]  [0 1]
+    //     //         [0 0]
+    //     let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, vec![1])));
+    //     let b = Sparse::from_dim(vec![0,1], 2, vec![2,3]);
+    //     let a_mtx = a.into_tensor().transpose();
+    //     let b_vec = b.into_tensor();
+    //     let out: Sparse<Vec<i32>> = a_mtx * b_vec;
+    //     assert_eq!(Sparse::from_dim(vec![1], 2, vec![2]), out);
+    // }
+
     #[test]
-    fn sparse_matrix_sparse_vector_mul() {
-        // Variable length rows with one empty:
-        // [2, 3]  [0 1]
-        //         [0 0]
-        let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, vec![1])));
-        let b = Sparse::from_dim(vec![0,1], 2, vec![2,3]);
-        let a_mtx = a.into_tensor().transpose();
+    fn block_sparse_matrix_sparse_vector_mul() {
+        let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, Chunked3::from_flat(Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9])))));
+        let b = Sparse::from_dim(vec![0,1], 2, Chunked3::from_flat(vec![1,2,3,4,5,6]));
+        let a_mtx = a.into_tensor();
         let b_vec = b.into_tensor();
-        let out: Sparse<Vec<i32>> = a_mtx * b_vec;
-        assert_eq!(Sparse::from_dim(vec![1], 2, vec![2]), out);
+        let out = a_mtx.view() * b_vec.view();
+        assert_eq!(Sparse::from_dim(&[0][..], 2, Chunked3::from_flat(vec![32, 77, 122])), out.into_data());
     }
 
     //#[test]
