@@ -109,6 +109,7 @@ impl<'a, T> Flat for &'a mut [T] {}
 /// swapping positions of `I0` and `I1`, which means a matrix with `I == (I1, I0)` has structure
 /// that is transpose of the matix with `I = (I0, I1)`.
 #[derive(Copy, Clone, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct Tensor<T: ?Sized> {
     pub data: T,
