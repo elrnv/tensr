@@ -127,7 +127,11 @@ impl<T: Scalar> SSBlockMatrix3<T> {
     }
 
     /// Assume that rows are monotonically increasing in the iterator.
-    pub fn from_block_triplets_iter_uncompressed<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+    pub fn from_block_triplets_iter_uncompressed<I>(
+        iter: I,
+        num_rows: usize,
+        num_cols: usize,
+    ) -> Self
     where
         I: Iterator<Item = (usize, usize, [[T; 3]; 3])>,
     {
@@ -168,12 +172,11 @@ impl<T: Scalar> SSBlockMatrix3<T> {
 
         col_data.sort_chunks_by_index();
 
-        Sparse::from_dim(rows, num_rows, col_data)
-            .into_tensor()
+        Sparse::from_dim(rows, num_rows, col_data).into_tensor()
     }
     pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
-        where
-            I: Iterator<Item = (usize, usize, [[T; 3]; 3])>,
+    where
+        I: Iterator<Item = (usize, usize, [[T; 3]; 3])>,
     {
         Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
@@ -221,6 +224,15 @@ where
 {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
     pub fn pruned(&self, keep: impl Fn(usize, usize, &Matrix3<T>) -> bool) -> SSBlockMatrix3<T> {
+        self.pruned_with(keep, |_, _| {})
+    }
+
+    /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
+    pub fn pruned_with(
+        &self,
+        keep: impl Fn(usize, usize, &Matrix3<T>) -> bool,
+        mapping: impl FnMut(usize, usize),
+    ) -> SSBlockMatrix3<T> {
         let data = self.as_data();
         // Check that there are no duplicate rows. This should not happen when crating from
         // triplets.
@@ -230,7 +242,7 @@ where
             data.view().source.pruned(
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
-                |_, _| {},
+                mapping,
             ),
         )
         .into_tensor()
@@ -348,14 +360,15 @@ where
     }
 }
 
-impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>> for SSBlockMatrix3View<'a, T>
+impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>>
+    for SSBlockMatrix3View<'a, T>
 {
     type Output = Tensor<SparseView<'a, Tensor<Chunked3<Tensor<Vec<T>>>>>>;
     fn mul(self, rhs: Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>) -> Self::Output {
         let rhs_data = rhs.as_data();
         assert_eq!(rhs_data.len(), self.num_cols());
 
-        let mut res = Chunked3::from_flat(vec![T::zero(); self.data.len()*3]);
+        let mut res = Chunked3::from_flat(vec![T::zero(); self.data.len() * 3]);
 
         for (index, (_, row, _)) in self.as_data().iter().enumerate() {
             let mut lhs_val_iter = row.into_iter().peekable();
@@ -378,7 +391,6 @@ impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>
         Sparse::new(self.data.selection, res).into_tensor()
     }
 }
-
 
 impl<'a, T: Scalar, Rhs> Mul<Rhs> for Transpose<SSBlockMatrix3View<'_, T>>
 where
@@ -403,7 +415,9 @@ where
     }
 }
 
-impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>> for Transpose<SSBlockMatrix3View<'_, T>> {
+impl<'a, T: Scalar> Mul<Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>>
+    for Transpose<SSBlockMatrix3View<'_, T>>
+{
     type Output = Tensor<Chunked3<Tensor<Vec<T>>>>;
     fn mul(self, rhs: Tensor<SparseView<'a, Tensor<Chunked3<&'a Tensor<[T]>>>>>) -> Self::Output {
         let rhs_data = rhs.as_data();
@@ -671,9 +685,13 @@ impl<'a, T: Scalar, I: Set + AsIndexSlice> SSBlockMatrix3x1<T, I> {
 
 impl<T: Scalar> SSBlockMatrix3x1<T> {
     /// Assume that rows are monotonically increasing in the iterator.
-    pub fn from_block_triplets_iter_uncompressed<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
-        where
-            I: Iterator<Item = (usize, usize, [T; 3])>,
+    pub fn from_block_triplets_iter_uncompressed<I>(
+        iter: I,
+        num_rows: usize,
+        num_cols: usize,
+    ) -> Self
+    where
+        I: Iterator<Item = (usize, usize, [T; 3])>,
     {
         let cap = iter.size_hint().0;
         let mut rows = Vec::with_capacity(cap);
@@ -712,22 +730,20 @@ impl<T: Scalar> SSBlockMatrix3x1<T> {
 
         col_data.sort_chunks_by_index();
 
-        Sparse::from_dim(rows, num_rows, col_data)
-            .into_tensor()
+        Sparse::from_dim(rows, num_rows, col_data).into_tensor()
     }
     pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
-        where
-            I: Iterator<Item = (usize, usize, [T; 3])>,
+    where
+        I: Iterator<Item = (usize, usize, [T; 3])>,
     {
         Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
-
 }
 
 impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
-    where
-        Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
-        I: IntoOwned<Owned = Vec<usize>>,
+where
+    Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
+    I: IntoOwned<Owned = Vec<usize>>,
 {
     /// Compress the matrix representation by consolidating duplicate entries.
     pub fn compressed(&self) -> SSBlockMatrix3x1<T> {
@@ -741,14 +757,14 @@ impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
                 *AsMutTensor::as_mut_tensor(a.as_mut_arrays()) += b.into_arrays().as_tensor()
             }),
         )
-            .into_tensor()
+        .into_tensor()
     }
 }
 
 impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
-    where
-        Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
-        I: IntoOwned<Owned = Vec<usize>>,
+where
+    Self: for<'a> View<'a, Type = SSBlockMatrix3x1View<'a, T>>,
+    I: IntoOwned<Owned = Vec<usize>>,
 {
     /// Remove all elements that do not satisfy the given predicate and compress the resulting matrix.
     pub fn pruned(
@@ -766,9 +782,9 @@ impl<T: Scalar, I: AsIndexSlice> SSBlockMatrix3x1<T, I>
                 |a, b| *a.as_mut_arrays().as_mut_tensor() += b.into_arrays().as_tensor(),
                 |i, j, e| keep(i, j, e.as_arrays().as_tensor()),
                 mapping,
-            )
+            ),
         )
-            .into_tensor()
+        .into_tensor()
     }
 }
 
@@ -933,12 +949,26 @@ mod tests {
 
     #[test]
     fn block_sparse_matrix_sparse_vector_mul() {
-        let a = Sparse::from_dim(vec![0], 2, Chunked::from_sizes(vec![1], Sparse::from_dim(vec![1], 2, Chunked3::from_flat(Chunked3::from_flat(vec![1,2,3,4,5,6,7,8,9])))));
-        let b = Sparse::from_dim(vec![0,1], 2, Chunked3::from_flat(vec![1,2,3,4,5,6]));
+        let a = Sparse::from_dim(
+            vec![0],
+            2,
+            Chunked::from_sizes(
+                vec![1],
+                Sparse::from_dim(
+                    vec![1],
+                    2,
+                    Chunked3::from_flat(Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6, 7, 8, 9])),
+                ),
+            ),
+        );
+        let b = Sparse::from_dim(vec![0, 1], 2, Chunked3::from_flat(vec![1, 2, 3, 4, 5, 6]));
         let a_mtx = a.into_tensor();
         let b_vec = b.into_tensor();
         let out = a_mtx.view() * b_vec.view();
-        assert_eq!(Sparse::from_dim(&[0][..], 2, Chunked3::from_flat(vec![32, 77, 122])), out.into_data());
+        assert_eq!(
+            Sparse::from_dim(&[0][..], 2, Chunked3::from_flat(vec![32, 77, 122])),
+            out.into_data()
+        );
     }
 
     //#[test]
