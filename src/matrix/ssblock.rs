@@ -127,7 +127,7 @@ impl<T: Scalar> SSBlockMatrix3<T> {
     }
 
     /// Assume that rows are monotonically increasing in the iterator.
-    pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+    pub fn from_block_triplets_iter_uncompressed<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
     where
         I: Iterator<Item = (usize, usize, [[T; 3]; 3])>,
     {
@@ -170,7 +170,12 @@ impl<T: Scalar> SSBlockMatrix3<T> {
 
         Sparse::from_dim(rows, num_rows, col_data)
             .into_tensor()
-            .compressed()
+    }
+    pub fn from_block_triplets_iter<I>(iter: I, num_rows: usize, num_cols: usize) -> Self
+        where
+            I: Iterator<Item = (usize, usize, [[T; 3]; 3])>,
+    {
+        Self::from_block_triplets_iter_uncompressed(iter, num_rows, num_cols).compressed()
     }
 }
 
